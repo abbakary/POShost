@@ -69,6 +69,8 @@ urlpatterns = [
     path("users/", views.users_list, name="users_list"),
     path("users/add/", views.user_create, name="user_create"),
     path("users/<int:pk>/edit/", views.user_edit, name="user_edit"),
+    path("users/<int:pk>/toggle/", views.user_toggle_active, name="user_toggle_active"),
+    path("users/<int:pk>/reset/", views.user_reset_password, name="user_reset_password"),
 
     # Internal admin console: system settings and tools
     path("console/settings/", views.system_settings, name="system_settings"),
@@ -85,5 +87,6 @@ urlpatterns = [
     path("api/inventory/stock/", views.api_inventory_stock, name="api_inventory_stock"),
     path("api/brands/create/", views.create_brand, name="api_create_brand"),
     path("api/customers/<int:customer_id>/vehicles/", views.api_customer_vehicles, name="api_customer_vehicles"),
+    path("api/customers/check-duplicate/", views.api_check_customer_duplicate, name="api_check_customer_duplicate"),
     path("api/notifications/summary/", views.api_notifications_summary, name="api_notifications_summary"),
 ]

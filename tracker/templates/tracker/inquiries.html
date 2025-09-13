@@ -177,17 +177,18 @@
                       {% endif %}
                     </td>
                     <td class="text-end">
-                      <form class="d-inline" method="post" action="{% url 'tracker:update_inquiry_status' q.id %}">{% csrf_token %}
-                        <select class="form-select form-select-sm d-inline-block w-auto me-2" name="status">
-                          <option value="created" {% if q.status == 'created' %}selected{% endif %}>New</option>
-                          <option value="in_progress" {% if q.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                          <option value="completed" {% if q.status == 'completed' %}selected{% endif %}>Resolved</option>
-                        </select>
-                        <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
-                      </form>
-                      <button class="btn btn-sm btn-success ms-2" data-bs-toggle="modal" data-bs-target="#respondModal" data-id="{{ q.id }}">
-                        <i class="fa fa-reply me-1"></i> Respond
-                      </button>
+                      <div class="dropdown d-inline-block">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Actions</button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                          <li class="dropdown-header">Update Status</li>
+                          <li><a class="dropdown-item inq-set-status" href="#" data-id="{{ q.id }}" data-status="created">New</a></li>
+                          <li><a class="dropdown-item inq-set-status" href="#" data-id="{{ q.id }}" data-status="in_progress">In Progress</a></li>
+                          <li><a class="dropdown-item inq-set-status" href="#" data-id="{{ q.id }}" data-status="completed">Resolved</a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item" href="{% url 'tracker:customer_detail' q.customer.id %}">View Customer</a></li>
+                          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#respondModal" data-id="{{ q.id }}">Respond</a></li>
+                        </ul>
+                      </div>
                     </td>
                   </tr>
                 {% empty %}
@@ -279,16 +280,35 @@
   // Wire modal action to selected inquiry id
   (function(){
     var respondModal = document.getElementById('respondModal');
-    if (!respondModal) return;
-    respondModal.addEventListener('show.bs.modal', function (event) {
-      var button = event.relatedTarget;
-      var id = button ? button.getAttribute('data-id') : null;
-      var form = document.getElementById('respondForm');
-      if (id && form) {
-        // Build action from Django URL with a placeholder 0
-        var base = "{% url 'tracker:inquiry_respond' 0 %}";
-        form.action = base.replace('/0/', '/' + id + '/');
-      }
+    if (respondModal) {
+      respondModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var id = button ? button.getAttribute('data-id') : null;
+        var form = document.getElementById('respondForm');
+        if (id && form) {
+          var base = "{% url 'tracker:inquiry_respond' 0 %}";
+          form.action = base.replace('/0/', '/' + id + '/');
+        }
+      });
+    }
+
+    // Advanced dropdown: status update
+    var statusForm = document.createElement('form');
+    statusForm.method = 'post';
+    statusForm.style.display = 'none';
+    statusForm.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}"><input type="hidden" name="status" id="inqStatusInput">`;
+    document.body.appendChild(statusForm);
+
+    document.addEventListener('click', function(e){
+      var a = e.target.closest('.inq-set-status');
+      if (!a) return;
+      e.preventDefault();
+      var id = a.getAttribute('data-id');
+      var status = a.getAttribute('data-status');
+      var base = "{% url 'tracker:update_inquiry_status' 0 %}";
+      statusForm.action = base.replace('/0/', '/' + id + '/');
+      statusForm.querySelector('#inqStatusInput').value = status;
+      statusForm.submit();
     });
   })();
 </script>

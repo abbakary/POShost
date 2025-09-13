@@ -769,6 +769,68 @@ class AdminUserCreateForm(forms.ModelForm):
             user.groups.add(mgr)
         return user
 
+class AdminUserForm(forms.ModelForm):
+    group_manager = forms.BooleanField(
+        required=False,
+        label="Manager role",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    new_password = forms.CharField(
+        required=False,
+        label="New Password",
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )
+    confirm_password = forms.CharField(
+        required=False,
+        label="Confirm New Password",
+        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    )
+
+    class Meta:
+        model = User
+        fields = ["username", "first_name", "last_name", "email", "is_active", "is_staff", "is_superuser"]
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control', 'readonly': True}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_staff': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_superuser': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            mgr = Group.objects.get(name="manager")
+            self.fields['group_manager'].initial = self.instance and self.instance.pk and self.instance.groups.filter(id=mgr.id).exists()
+        except Group.DoesNotExist:
+            pass
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('new_password')
+        p2 = cleaned.get('confirm_password')
+        if p1 or p2:
+            if p1 != p2:
+                self.add_error('confirm_password', 'Passwords do not match')
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        if commit:
+            user.save()
+        mgr, _ = Group.objects.get_or_create(name="manager")
+        if self.cleaned_data.get('group_manager'):
+            user.groups.add(mgr)
+        else:
+            user.groups.remove(mgr)
+        p1 = self.cleaned_data.get('new_password')
+        if p1:
+            user.set_password(p1)
+            user.save()
+        return user
+
 class InventoryAdjustmentForm(forms.ModelForm):
     """Form for making inventory adjustments (add/remove stock)"""
     item = forms.ModelChoiceField(

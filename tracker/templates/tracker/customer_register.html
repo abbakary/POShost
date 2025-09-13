@@ -33,9 +33,18 @@
           <div class="card-body">
             {% if messages %}
               {% for m in messages %}
-                <div class="alert alert-{{ m.tags }} alert-dismissible fade show" role="alert">
-                  {{ m }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-{{ m.tags }} alert-dismissible fade show d-flex align-items-center" role="alert">
+                  {% if 'success' in m.tags %}
+                    <i class="fa fa-check-circle me-2"></i>
+                  {% elif 'error' in m.tags %}
+                    <i class="fa fa-times-circle me-2"></i>
+                  {% elif 'warning' in m.tags %}
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                  {% else %}
+                    <i class="fa fa-info-circle me-2"></i>
+                  {% endif %}
+                  <div>{{ m }}</div>
+                  <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
                 </div>
               {% endfor %}
             {% endif %}
@@ -792,6 +801,66 @@
     </div>
   </div>
 
+  <!-- Existing Customer Modal -->
+  <div class="modal fade" id="existingCustomerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content existing-customer-modal">
+        <div class="modal-header align-items-center">
+          <div class="d-flex align-items-center">
+            <span class="status-icon bg-light text-danger me-2"><i class="fa fa-times"></i></span>
+            <h5 class="modal-title mb-0">Customer already exists</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="existing-customer-card">
+            <div class="d-flex align-items-center mb-3">
+              <img class="existing-customer-thumb me-3" src="https://cdn.builder.io/api/v1/image/assets%2Fbebc376cdd2f4ab3aba9527a99ac7787%2F5125af9d931849989d61e52df11234aa?format=webp&width=800" alt="Avatar">
+              <div>
+                <div class="h5 mb-0" id="existingCustomerName"></div>
+                <small class="text-muted">Code: <span id="existingCustomerCode"></span></small>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0 align-middle">
+                <tbody>
+                  <tr>
+                    <th class="text-muted fw-normal">Phone</th>
+                    <td id="existingCustomerPhone"></td>
+                    <th class="text-muted fw-normal">Type</th>
+                    <td class="text-capitalize" id="existingCustomerType"></td>
+                  </tr>
+                  <tr>
+                    <th class="text-muted fw-normal">Organization</th>
+                    <td id="existingCustomerOrg"></td>
+                    <th class="text-muted fw-normal">Tax No.</th>
+                    <td id="existingCustomerTax"></td>
+                  </tr>
+                  <tr>
+                    <th class="text-muted fw-normal">Email</th>
+                    <td id="existingCustomerEmail"></td>
+                    <th class="text-muted fw-normal">Visits</th>
+                    <td id="existingCustomerVisits"></td>
+                  </tr>
+                  <tr>
+                    <th class="text-muted fw-normal">Address</th>
+                    <td colspan="3" id="existingCustomerAddress"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <div class="text-muted small"><i class="fa fa-info-circle me-1"></i>Use this customer to proceed without creating a duplicate.</div>
+          <div class="d-flex gap-2">
+            <a id="existingCustomerCreateOrderBtn" class="btn btn-primary"><i class="fa fa-plus me-1"></i>Create Order</a>
+            <a id="existingCustomerViewBtn" class="btn btn-outline-secondary"><i class="fa fa-eye me-1"></i>View Profile</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
 {% endblock %}
 

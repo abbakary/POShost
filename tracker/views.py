@@ -28,17 +28,6 @@ from django.views.generic import View
 class CustomLoginView(LoginView):
     template_name = "registration/login.html"
 
-class CustomLogoutView(View):
-    def get(self, request, *args, **kwargs):
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect('tracker:login')
-        
-    def post(self, request, *args, **kwargs):
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect('tracker:login')
-
     def form_valid(self, form):
         response = super().form_valid(form)
         remember = self.request.POST.get("remember")
@@ -47,26 +36,48 @@ class CustomLogoutView(View):
         else:
             self.request.session.set_expiry(60 * 60 * 24 * 14)
         try:
-            from .signals import _client_ip  # reuse helper
+            from .signals import _client_ip
             ip = _client_ip(self.request)
             ua = (self.request.META.get('HTTP_USER_AGENT') or '')[:200]
-            add_audit_log(self.request.user, 'login', f'Login at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")} from {ip or "?"} UA: {ua}')
+            add_audit_log(self.request.user, 'login', f'Login at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")} from {ip or "?"} UA: {ua}', ip=ip, user_agent=ua)
         except Exception:
             pass
         return response
 
     def get_success_url(self):
         user = self.request.user
-        # Admins land on dashboard
         if user.is_superuser:
             return reverse('tracker:dashboard')
-        # Managers land on orders list (operational focus)
         if user.groups.filter(name='manager').exists():
             return reverse('tracker:orders_list')
-        # Staff (non-admin) to users list, otherwise dashboard
         if user.is_staff:
             return reverse('tracker:users_list')
         return reverse('tracker:dashboard')
+
+class CustomLogoutView(View):
+    def get(self, request, *args, **kwargs):
+        from django.contrib.auth import logout
+        try:
+            from .signals import _client_ip
+            ip = _client_ip(request)
+            ua = (request.META.get('HTTP_USER_AGENT') or '')[:200]
+            add_audit_log(request.user, 'logout', f'Logout at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}', ip=ip, user_agent=ua)
+        except Exception:
+            pass
+        logout(request)
+        return redirect('tracker:login')
+
+    def post(self, request, *args, **kwargs):
+        from django.contrib.auth import logout
+        try:
+            from .signals import _client_ip
+            ip = _client_ip(request)
+            ua = (request.META.get('HTTP_USER_AGENT') or '')[:200]
+            add_audit_log(request.user, 'logout', f'Logout at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}', ip=ip, user_agent=ua)
+        except Exception:
+            pass
+        logout(request)
+        return redirect('tracker:login')
 
 
 @login_required
@@ -422,7 +433,11 @@ def customers_list(request: HttpRequest):
     f_type = request.GET.get('type','').strip()
     f_status = request.GET.get('status','').strip()
 
-    qs = Customer.objects.all().order_by('-registration_date')
+    from django.db.models import Count
+
+    qs = Customer.objects.all().annotate(
+        returning_dates=Count('orders__created_at__date', distinct=True)
+    ).order_by('-registration_date')
     if q:
         qs = qs.filter(
             Q(full_name__icontains=q) | Q(phone__icontains=q) | Q(email__icontains=q) | Q(code__icontains=q)
@@ -433,12 +448,16 @@ def customers_list(request: HttpRequest):
         qs = qs.filter(total_visits__gt=0)
     elif f_status == 'inactive':
         qs = qs.filter(total_visits__lte=0)
+    elif f_status == 'returning':
+        qs = qs.filter(returning_dates__gt=1)
 
     # Stats
     today = timezone.localdate()
     active_customers = Customer.objects.filter(arrival_time__date=today).count()
     new_customers_today = Customer.objects.filter(registration_date__date=today).count()
-    returning_customers = Customer.objects.filter(total_visits__gt=1).count()
+    returning_customers = Customer.objects.annotate(
+        d=Count('orders__created_at__date', distinct=True)
+    ).filter(d__gt=1).count()
 
     paginator = Paginator(qs, 20)
     page = request.GET.get('page')
@@ -1710,6 +1729,59 @@ def profile(request: HttpRequest):
     })
 
 @login_required
+def api_check_customer_duplicate(request: HttpRequest):
+    full_name = (request.GET.get("full_name") or "").strip()
+    phone = (request.GET.get("phone") or "").strip()
+    customer_type = (request.GET.get("customer_type") or "").strip()
+    org = (request.GET.get("organization_name") or "").strip()
+    tax = (request.GET.get("tax_number") or "").strip()
+
+    if not full_name or not phone:
+        return JsonResponse({"exists": False})
+
+    qs = Customer.objects.all()
+    if customer_type == "personal":
+        qs = qs.filter(full_name=full_name, phone=phone, customer_type="personal")
+    elif customer_type in ["government", "ngo", "company"]:
+        if not org or not tax:
+            return JsonResponse({"exists": False})
+        qs = qs.filter(
+            full_name=full_name,
+            phone=phone,
+            organization_name=org,
+            tax_number=tax,
+            customer_type=customer_type,
+        )
+    else:
+        qs = qs.filter(full_name=full_name, phone=phone)
+        if org:
+            qs = qs.filter(organization_name=org)
+        if tax:
+            qs = qs.filter(tax_number=tax)
+
+    c = qs.first()
+    if not c:
+        return JsonResponse({"exists": False})
+
+    data = {
+        "id": c.id,
+        "code": c.code,
+        "full_name": c.full_name,
+        "phone": c.phone,
+        "email": c.email or "",
+        "address": c.address or "",
+        "customer_type": c.customer_type or "",
+        "organization_name": c.organization_name or "",
+        "tax_number": c.tax_number or "",
+        "total_visits": c.total_visits,
+        "last_visit": c.last_visit.isoformat() if c.last_visit else "",
+        "detail_url": reverse("tracker:customer_detail", kwargs={"pk": c.id}),
+        "create_order_url": reverse("tracker:create_order_for_customer", kwargs={"pk": c.id}),
+    }
+    return JsonResponse({"exists": True, "customer": data})
+
+
+@login_required
 def api_recent_orders(request: HttpRequest):
     recents = Order.objects.select_related("customer", "vehicle").exclude(status="completed").order_by("-created_at")[:10]
     data = [
@@ -2424,7 +2496,7 @@ def users_list(request: HttpRequest):
     q = request.GET.get('q','').strip()
     qs = User.objects.all().order_by('-date_joined')
     if q:
-        qs = qs.filter(username__icontains=q)
+        qs = qs.filter(Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q))
     return render(request, 'tracker/users_list.html', { 'users': qs[:100], 'q': q })
 
 @login_required
@@ -2461,6 +2533,30 @@ def user_edit(request: HttpRequest, pk: int):
     else:
         form = AdminUserForm(instance=u)
     return render(request, 'tracker/user_edit.html', { 'form': form, 'user_obj': u })
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def user_toggle_active(request: HttpRequest, pk: int):
+    u = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        u.is_active = not u.is_active
+        u.save(update_fields=['is_active'])
+        add_audit_log(request.user, 'user_toggle_active', f'Toggled active for {u.username} -> {u.is_active}')
+        messages.success(request, f'User {"activated" if u.is_active else "deactivated"}.')
+    return redirect('tracker:users_list')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def user_reset_password(request: HttpRequest, pk: int):
+    import random, string
+    u = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        temp = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+        u.set_password(temp)
+        u.save()
+        add_audit_log(request.user, 'user_reset_password', f'Reset password for {u.username}')
+        messages.success(request, f'Temporary password for {u.username}: {temp}')
+    return redirect('tracker:users_list')
 
 
 @login_required
@@ -2883,8 +2979,12 @@ def audit_logs(request: HttpRequest):
         add_audit_log(request.user, 'audit_logs_cleared', 'Cleared all audit logs')
         messages.success(request, 'Audit logs cleared')
         return redirect('tracker:audit_logs')
+    q = request.GET.get('q','').strip()
     logs = get_audit_logs()
-    return render(request, 'tracker/audit_logs.html', {'logs': logs})
+    if q:
+        ql = q.lower()
+        logs = [l for l in logs if ql in str(l.get('user','')).lower() or ql in str(l.get('action','')).lower() or ql in str(l.get('description','')).lower()]
+    return render(request, 'tracker/audit_logs.html', {'logs': logs, 'q': q})
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
