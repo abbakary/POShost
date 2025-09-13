@@ -69,6 +69,8 @@ urlpatterns = [
     path("users/", views.users_list, name="users_list"),
     path("users/add/", views.user_create, name="user_create"),
     path("users/<int:pk>/edit/", views.user_edit, name="user_edit"),
+    path("users/<int:pk>/toggle/", views.user_toggle_active, name="user_toggle_active"),
+    path("users/<int:pk>/reset/", views.user_reset_password, name="user_reset_password"),
 
     # Internal admin console: system settings and tools
     path("console/settings/", views.system_settings, name="system_settings"),
