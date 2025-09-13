@@ -1,0 +1,201 @@
+{% extends 'tracker/base.html' %}
+{% load static %}
+{% block title %}Service Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row align-items-center">
+      <div class="col-6"><h4>Service Analytics</h4></div>
+      <div class="col-6"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tracker:dashboard' %}">Dashboard</a></li><li class="breadcrumb-item"><a href="{% url 'tracker:analytics' %}">Analytics</a></li><li class="breadcrumb-item active">Service</li></ol></div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid">
+  <!-- Period Tabs + Export -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item"><a class="nav-link {% if period == 'daily' %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=daily">Daily</a></li>
+    <li class="nav-item"><a class="nav-link {% if period == 'weekly' %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=weekly">Weekly</a></li>
+    <li class="nav-item"><a class="nav-link {% if period == 'monthly' or not period %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=monthly">Monthly</a></li>
+    <li class="nav-item"><a class="nav-link {% if period == 'yearly' %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=yearly">Yearly</a></li>
+    <li class="ms-auto"><a class="btn btn-outline-primary" href="{% url 'tracker:reports_export' %}?from={{ export_from }}&to={{ export_to }}"><i class="fa fa-download me-1"></i> Export Orders CSV</a></li>
+  </ul>
+
+  <!-- Custom Range Filter -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <form class="row g-2 align-items-end" method="get">
+        <div class="col-sm-3"><label class="form-label">From</label><input type="date" class="form-control" name="from" value="{{ export_from }}"></div>
+        <div class="col-sm-3"><label class="form-label">To</label><input type="date" class="form-control" name="to" value="{{ export_to }}"></div>
+        <div class="col-sm-3"><label class="form-label">Period</label>
+          <select class="form-select" name="period">
+            <option value="">Custom</option>
+            <option value="daily" {% if period == 'daily' %}selected{% endif %}>Daily</option>
+            <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Weekly</option>
+            <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Monthly</option>
+            <option value="yearly" {% if period == 'yearly' %}selected{% endif %}>Yearly</option>
+          </select>
+        </div>
+        <div class="col-sm-3 d-flex gap-2"><button class="btn btn-primary" type="submit"><i class="fa fa-filter me-1"></i> Apply</button><a class="btn btn-light" href="{% url 'tracker:analytics_service' %}">Reset</a></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- KPIs (focused by app) -->
+  <div class="row g-3">
+    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total Orders</div><div class="h3 mb-0">{{ totals.total }}</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Tire Sales</div><div class="h3 mb-0 text-primary">{{ totals.tire_sales }}</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Car Service</div><div class="h3 mb-0 text-success">{{ totals.car_service }}</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Inquiries</div><div class="h3 mb-0 text-info">{{ totals.inquiries }}</div></div></div></div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row mt-3 g-3">
+    <div class="col-xl-8">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><h5 class="mb-0">Service Trend by App</h5></div>
+        <div class="card-body"><div id="sTrend" style="height:360px"></div></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="card shadow-sm mb-3 h-100">
+        <div class="card-header"><h6 class="mb-0">Service Mix (Tire Sales / Car Service / Inquiries)</h6></div>
+        <div class="card-body"><div id="sTypes" style="height:220px"></div></div>
+      </div>
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><h6 class="mb-0">Status by App</h6></div>
+        <div class="card-body"><div id="sStatus" style="height:260px"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-3 g-3">
+    <div class="col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><h6 class="mb-0">Top Tire Brands</h6></div>
+        <div class="card-body"><div id="sBrands" style="height:320px"></div></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><h6 class="mb-0">Tire Types</h6></div>
+        <div class="card-body"><div id="sTireTypes" style="height:320px"></div></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><h6 class="mb-0">Inquiry Types</h6></div>
+        <div class="card-body"><div id="sInquiries" style="height:320px"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const charts = {{ charts_json|default:'{}'|safe }};
+
+  // Pie helper
+  function pie(labels, values){
+    return {
+      tooltip:{trigger:'item'},
+      legend:{bottom:0},
+      series:[{
+        type:'pie', radius:['40%','70%'],
+        data:(labels||[]).map((l,i)=>({name:l, value:(values||[])[i]||0})),
+        label:{show:false}, emphasis:{label:{show:true,fontSize:14}}
+      }]
+    }
+  }
+
+  // Multi-series line helper
+  function lineMulti(labels, series){
+    return {
+      tooltip:{trigger:'axis'},
+      legend:{bottom:0},
+      xAxis:{type:'category', data:labels||[]},
+      yAxis:{type:'value'},
+      grid:{left:40,right:10,top:20,bottom:40},
+      series:(series||[]).map(s=>({type:'line', smooth:true, name:s.name, data:s.values||[], areaStyle:{}}))
+    }
+  }
+
+  // Stacked bar helper
+  function stackedBar(labels, series){
+    return {
+      tooltip:{trigger:'axis'},
+      legend:{bottom:0},
+      xAxis:{type:'category', data:labels||[]},
+      yAxis:{type:'value'},
+      grid:{left:40,right:10,top:20,bottom:40},
+      series:(series||[]).map(s=>({type:'bar', name:s.name, stack:'total', emphasis:{focus:'series'}, data:s.data||[]}))
+    }
+  }
+
+  // Simple bar helper
+  function bar(labels, values){
+    return {
+      tooltip:{trigger:'axis'},
+      xAxis:{type:'category', data:labels||[]},
+      yAxis:{type:'value'},
+      grid:{left:40,right:10,top:20,bottom:40},
+      series:[{type:'bar', data:values||[], itemStyle:{color:'#4e79a7'}}]
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    if(window.echarts && charts){
+      // Multi-series trend
+      if(document.getElementById('sTrend')){
+        const el = document.getElementById('sTrend');
+        const t = charts.trend_multi||{};
+        const any = (t.series||[]).some(s => (s.values||[]).some(v => (v||0) > 0));
+        if(any){ echarts.init(el).setOption(lineMulti(t.labels||[], t.series||[])); }
+        else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
+      }
+      // Mix by app
+      if(document.getElementById('sTypes')){
+        const el = document.getElementById('sTypes');
+        const p = charts.types||{};
+        const any = (p.values||[]).some(v => (v||0) > 0);
+        if(any){ echarts.init(el).setOption(pie(p.labels||[], p.values||[])); }
+        else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
+      }
+      // Status by app (stacked)
+      if(document.getElementById('sStatus')){
+        const el = document.getElementById('sStatus');
+        const s = charts.status_by_app||{};
+        const any = (s.series||[]).some(sr => (sr.data||[]).some(v => (v||0) > 0));
+        if(any){ echarts.init(el).setOption(stackedBar(s.apps||[], s.series||[])); }
+        else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
+      }
+      // Top tire brands
+      if(document.getElementById('sBrands')){
+        const el = document.getElementById('sBrands');
+        const b = charts.top_brands||{};
+        const any = (b.values||[]).some(v => (v||0) > 0);
+        if(any){ echarts.init(el).setOption(bar(b.labels||[], b.values||[])); }
+        else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
+      }
+      // Tire types
+      if(document.getElementById('sTireTypes')){
+        const el = document.getElementById('sTireTypes');
+        const tt = charts.tire_types||{};
+        const any = (tt.values||[]).some(v => (v||0) > 0);
+        if(any){ echarts.init(el).setOption(bar(tt.labels||[], tt.values||[])); }
+        else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
+      }
+      // Inquiry types
+      if(document.getElementById('sInquiries')){
+        const el = document.getElementById('sInquiries');
+        const i = charts.inquiry_types||{};
+        const any = (i.values||[]).some(v => (v||0) > 0);
+        if(any){ echarts.init(el).setOption(bar(i.labels||[], i.values||[])); }
+        else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
+      }
+    }
+  });
+</script>
+{% endblock %}
