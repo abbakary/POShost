@@ -38,6 +38,7 @@
             <select name="status" class="form-select">
               <option value="">Any status</option>
               <option value="active">Active today</option>
+              <option value="returning">Returning</option>
               <option value="inactive">Inactive</option>
             </select>
           </div>
@@ -65,6 +66,7 @@
                 <th>Name</th>
                 <th>Phone</th>
                 <th>Type</th>
+                <th>Status</th>
                 <th>Visits</th>
                 <th>Last Visit</th>
                 <th></th>
@@ -73,11 +75,18 @@
             <tbody>
               {% for c in customers %}
                 <tr>
-                  <td class="text-center"><img class="truck-thumb" src="https://cdn.builder.io/api/v1/image/assets%2Fbebc376cdd2f4ab3aba9527a99ac7787%2F5125af9d931849989d61e52df11234aa?format=webp&width=800" alt="Truck"></td>
+                  <td class="text-center"><img class="truck-thumb" src="{% static 'assets/images/dashboard/order-table/1.png' %}" alt="Truck"></td>
                   <td class="text-nowrap">{{ c.code }}</td>
                   <td class="text-nowrap">{{ c.full_name }}</td>
                   <td>{{ c.phone }}</td>
                   <td class="text-capitalize">{{ c.customer_type|default:'personal' }}</td>
+                  <td>
+                    {% if c.returning_dates|default:0 > 1 %}
+                      <span class="badge bg-light text-dark">Returning</span>
+                    {% else %}
+                      <span class="badge bg-secondary">New</span>
+                    {% endif %}
+                  </td>
                   <td>{{ c.total_visits }}</td>
                   <td>{{ c.last_visit|date:'Y-m-d H:i' }}</td>
                   <td class="text-end">

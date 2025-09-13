@@ -422,7 +422,11 @@ def customers_list(request: HttpRequest):
     f_type = request.GET.get('type','').strip()
     f_status = request.GET.get('status','').strip()
 
-    qs = Customer.objects.all().order_by('-registration_date')
+    from django.db.models import Count
+
+    qs = Customer.objects.all().annotate(
+        returning_dates=Count('orders__created_at__date', distinct=True)
+    ).order_by('-registration_date')
     if q:
         qs = qs.filter(
             Q(full_name__icontains=q) | Q(phone__icontains=q) | Q(email__icontains=q) | Q(code__icontains=q)
@@ -433,12 +437,16 @@ def customers_list(request: HttpRequest):
         qs = qs.filter(total_visits__gt=0)
     elif f_status == 'inactive':
         qs = qs.filter(total_visits__lte=0)
+    elif f_status == 'returning':
+        qs = qs.filter(returning_dates__gt=1)
 
     # Stats
     today = timezone.localdate()
     active_customers = Customer.objects.filter(arrival_time__date=today).count()
     new_customers_today = Customer.objects.filter(registration_date__date=today).count()
-    returning_customers = Customer.objects.filter(total_visits__gt=1).count()
+    returning_customers = Customer.objects.annotate(
+        d=Count('orders__created_at__date', distinct=True)
+    ).filter(d__gt=1).count()
 
     paginator = Paginator(qs, 20)
     page = request.GET.get('page')
