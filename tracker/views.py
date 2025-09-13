@@ -2979,8 +2979,12 @@ def audit_logs(request: HttpRequest):
         add_audit_log(request.user, 'audit_logs_cleared', 'Cleared all audit logs')
         messages.success(request, 'Audit logs cleared')
         return redirect('tracker:audit_logs')
+    q = request.GET.get('q','').strip()
     logs = get_audit_logs()
-    return render(request, 'tracker/audit_logs.html', {'logs': logs})
+    if q:
+        ql = q.lower()
+        logs = [l for l in logs if ql in str(l.get('user','')).lower() or ql in str(l.get('action','')).lower() or ql in str(l.get('description','')).lower()]
+    return render(request, 'tracker/audit_logs.html', {'logs': logs, 'q': q})
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
