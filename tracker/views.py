@@ -28,17 +28,6 @@ from django.views.generic import View
 class CustomLoginView(LoginView):
     template_name = "registration/login.html"
 
-class CustomLogoutView(View):
-    def get(self, request, *args, **kwargs):
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect('tracker:login')
-        
-    def post(self, request, *args, **kwargs):
-        from django.contrib.auth import logout
-        logout(request)
-        return redirect('tracker:login')
-
     def form_valid(self, form):
         response = super().form_valid(form)
         remember = self.request.POST.get("remember")
@@ -47,26 +36,48 @@ class CustomLogoutView(View):
         else:
             self.request.session.set_expiry(60 * 60 * 24 * 14)
         try:
-            from .signals import _client_ip  # reuse helper
+            from .signals import _client_ip
             ip = _client_ip(self.request)
             ua = (self.request.META.get('HTTP_USER_AGENT') or '')[:200]
-            add_audit_log(self.request.user, 'login', f'Login at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")} from {ip or "?"} UA: {ua}')
+            add_audit_log(self.request.user, 'login', f'Login at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")} from {ip or "?"} UA: {ua}', ip=ip, user_agent=ua)
         except Exception:
             pass
         return response
 
     def get_success_url(self):
         user = self.request.user
-        # Admins land on dashboard
         if user.is_superuser:
             return reverse('tracker:dashboard')
-        # Managers land on orders list (operational focus)
         if user.groups.filter(name='manager').exists():
             return reverse('tracker:orders_list')
-        # Staff (non-admin) to users list, otherwise dashboard
         if user.is_staff:
             return reverse('tracker:users_list')
         return reverse('tracker:dashboard')
+
+class CustomLogoutView(View):
+    def get(self, request, *args, **kwargs):
+        from django.contrib.auth import logout
+        try:
+            from .signals import _client_ip
+            ip = _client_ip(request)
+            ua = (request.META.get('HTTP_USER_AGENT') or '')[:200]
+            add_audit_log(request.user, 'logout', f'Logout at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}', ip=ip, user_agent=ua)
+        except Exception:
+            pass
+        logout(request)
+        return redirect('tracker:login')
+
+    def post(self, request, *args, **kwargs):
+        from django.contrib.auth import logout
+        try:
+            from .signals import _client_ip
+            ip = _client_ip(request)
+            ua = (request.META.get('HTTP_USER_AGENT') or '')[:200]
+            add_audit_log(request.user, 'logout', f'Logout at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}', ip=ip, user_agent=ua)
+        except Exception:
+            pass
+        logout(request)
+        return redirect('tracker:login')
 
 
 @login_required
