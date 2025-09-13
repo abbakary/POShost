@@ -2534,6 +2534,30 @@ def user_edit(request: HttpRequest, pk: int):
         form = AdminUserForm(instance=u)
     return render(request, 'tracker/user_edit.html', { 'form': form, 'user_obj': u })
 
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def user_toggle_active(request: HttpRequest, pk: int):
+    u = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        u.is_active = not u.is_active
+        u.save(update_fields=['is_active'])
+        add_audit_log(request.user, 'user_toggle_active', f'Toggled active for {u.username} -> {u.is_active}')
+        messages.success(request, f'User {"activated" if u.is_active else "deactivated"}.')
+    return redirect('tracker:users_list')
+
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
+def user_reset_password(request: HttpRequest, pk: int):
+    import random, string
+    u = get_object_or_404(User, pk=pk)
+    if request.method == 'POST':
+        temp = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+        u.set_password(temp)
+        u.save()
+        add_audit_log(request.user, 'user_reset_password', f'Reset password for {u.username}')
+        messages.success(request, f'Temporary password for {u.username}: {temp}')
+    return redirect('tracker:users_list')
+
 
 @login_required
 def customer_edit(request: HttpRequest, pk: int):
