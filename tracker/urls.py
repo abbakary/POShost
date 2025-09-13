@@ -85,5 +85,6 @@ urlpatterns = [
     path("api/inventory/stock/", views.api_inventory_stock, name="api_inventory_stock"),
     path("api/brands/create/", views.create_brand, name="api_create_brand"),
     path("api/customers/<int:customer_id>/vehicles/", views.api_customer_vehicles, name="api_customer_vehicles"),
+    path("api/customers/check-duplicate/", views.api_check_customer_duplicate, name="api_check_customer_duplicate"),
     path("api/notifications/summary/", views.api_notifications_summary, name="api_notifications_summary"),
 ]

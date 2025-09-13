@@ -213,13 +213,52 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Form validation
+    // Form validation + duplicate customer check (Step 1)
     const form = document.querySelector('form');
+    async function checkDuplicateCustomer() {
+        const nameEl = document.getElementById('id_full_name');
+        const phoneEl = document.getElementById('id_phone');
+        const typeEl = document.getElementById('id_customer_type');
+        const orgEl = document.getElementById('id_organization_name');
+        const taxEl = document.getElementById('id_tax_number');
+        if (!nameEl || !phoneEl) return null;
+        const full_name = (nameEl.value || '').trim();
+        const phone = (phoneEl.value || '').trim();
+        const customer_type = typeEl ? (typeEl.value || '').trim() : '';
+        const organization_name = orgEl ? (orgEl.value || '').trim() : '';
+        const tax_number = taxEl ? (taxEl.value || '').trim() : '';
+        if (!full_name || !phone) return null;
+        const params = new URLSearchParams({ full_name, phone, customer_type, organization_name, tax_number });
+        const res = await fetch(`/api/customers/check-duplicate/?${params.toString()}`, { headers: { 'Accept': 'application/json' }});
+        if (!res.ok) return null;
+        return res.json();
+    }
+
+    function showExistingCustomerModal(data) {
+        const modalEl = document.getElementById('existingCustomerModal');
+        if (!modalEl || !data || !data.customer) return;
+        const c = data.customer;
+        document.getElementById('existingCustomerName').textContent = c.full_name || '';
+        document.getElementById('existingCustomerCode').textContent = c.code || '';
+        document.getElementById('existingCustomerPhone').textContent = c.phone || '';
+        document.getElementById('existingCustomerType').textContent = (c.customer_type || 'personal');
+        document.getElementById('existingCustomerOrg').textContent = c.organization_name || '-';
+        document.getElementById('existingCustomerTax').textContent = c.tax_number || '-';
+        document.getElementById('existingCustomerEmail').textContent = c.email || '-';
+        document.getElementById('existingCustomerVisits').textContent = c.total_visits != null ? c.total_visits : '-';
+        document.getElementById('existingCustomerAddress').textContent = c.address || '-';
+        const orderBtn = document.getElementById('existingCustomerCreateOrderBtn');
+        const viewBtn = document.getElementById('existingCustomerViewBtn');
+        if (orderBtn) orderBtn.setAttribute('href', c.create_order_url);
+        if (viewBtn) viewBtn.setAttribute('href', c.detail_url);
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+    }
+
     if (form) {
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             let isValid = true;
             const requiredFields = form.querySelectorAll('[required]');
-            
             requiredFields.forEach(field => {
                 if (!field.value.trim()) {
                     field.classList.add('is-invalid');
@@ -228,14 +267,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     field.classList.remove('is-invalid');
                 }
             });
-
             if (!isValid) {
                 e.preventDefault();
-                // Scroll to first invalid field
                 const firstInvalid = form.querySelector('.is-invalid');
-                if (firstInvalid) {
-                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            const stepInput = form.querySelector('input[name="step"]');
+            const currentStep = stepInput ? parseInt(stepInput.value, 10) : null;
+            if (currentStep === 1) {
+                e.preventDefault();
+                const result = await checkDuplicateCustomer();
+                if (result && result.exists) {
+                    showExistingCustomerModal(result);
+                    return;
                 }
+                // Re-submit with original submitter preserved
+                const submitter = e.submitter;
+                if (submitter && submitter.name) {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = submitter.name;
+                    hidden.value = submitter.value;
+                    form.appendChild(hidden);
+                }
+                form.submit();
             }
         });
     }

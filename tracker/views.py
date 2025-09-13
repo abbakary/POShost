@@ -1710,6 +1710,59 @@ def profile(request: HttpRequest):
     })
 
 @login_required
+def api_check_customer_duplicate(request: HttpRequest):
+    full_name = (request.GET.get("full_name") or "").strip()
+    phone = (request.GET.get("phone") or "").strip()
+    customer_type = (request.GET.get("customer_type") or "").strip()
+    org = (request.GET.get("organization_name") or "").strip()
+    tax = (request.GET.get("tax_number") or "").strip()
+
+    if not full_name or not phone:
+        return JsonResponse({"exists": False})
+
+    qs = Customer.objects.all()
+    if customer_type == "personal":
+        qs = qs.filter(full_name=full_name, phone=phone, customer_type="personal")
+    elif customer_type in ["government", "ngo", "company"]:
+        if not org or not tax:
+            return JsonResponse({"exists": False})
+        qs = qs.filter(
+            full_name=full_name,
+            phone=phone,
+            organization_name=org,
+            tax_number=tax,
+            customer_type=customer_type,
+        )
+    else:
+        qs = qs.filter(full_name=full_name, phone=phone)
+        if org:
+            qs = qs.filter(organization_name=org)
+        if tax:
+            qs = qs.filter(tax_number=tax)
+
+    c = qs.first()
+    if not c:
+        return JsonResponse({"exists": False})
+
+    data = {
+        "id": c.id,
+        "code": c.code,
+        "full_name": c.full_name,
+        "phone": c.phone,
+        "email": c.email or "",
+        "address": c.address or "",
+        "customer_type": c.customer_type or "",
+        "organization_name": c.organization_name or "",
+        "tax_number": c.tax_number or "",
+        "total_visits": c.total_visits,
+        "last_visit": c.last_visit.isoformat() if c.last_visit else "",
+        "detail_url": reverse("tracker:customer_detail", kwargs={"pk": c.id}),
+        "create_order_url": reverse("tracker:create_order_for_customer", kwargs={"pk": c.id}),
+    }
+    return JsonResponse({"exists": True, "customer": data})
+
+
+@login_required
 def api_recent_orders(request: HttpRequest):
     recents = Order.objects.select_related("customer", "vehicle").exclude(status="completed").order_by("-created_at")[:10]
     data = [
