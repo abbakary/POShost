@@ -729,7 +729,7 @@
                           {% for order in recent_orders %}
                           <tr>
                             <td>
-                              <div class="product-name"><img class="order-table-images img-fluid" src="../assets/images/dashboard/order-table/1.png" alt="product">
+                              <div class="product-name"><img class="order-table-images img-fluid" src="{% static 'assets/images/dashboard/order-table/1.png' %}" alt="product">
                                 <div class="product-sub"> <a class=" f-14 f-w-500 " href="{% url 'tracker:orders_list' %}">{{ order.item_name|default:order.description|default:order.type|capfirst }}</a><span class="f-light f-14 f-w-500 d-block">ID : {{ order.order_number }}</span></div>
                               </div>
                             </td>
@@ -790,7 +790,7 @@
                           {% for item in inventory_preview %}
                           <tr>
                             <td>
-                              <div class="product-name"><img class="order-table-images img-fluid" src="../assets/images/ecommerce/product-table-1.png" alt="item">
+                              <div class="product-name"><img class="order-table-images img-fluid" src="{% static 'assets/images/ecommerce/product-table-1.png' %}" alt="item">
                                 <div class="product-sub"> <a class="f-14 f-w-600" href="{% url 'tracker:inventory_list' %}">{{ item.name }}</a></div>
                               </div>
                             </td>
