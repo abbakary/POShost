@@ -2496,7 +2496,7 @@ def users_list(request: HttpRequest):
     q = request.GET.get('q','').strip()
     qs = User.objects.all().order_by('-date_joined')
     if q:
-        qs = qs.filter(username__icontains=q)
+        qs = qs.filter(Q(username__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q) | Q(email__icontains=q))
     return render(request, 'tracker/users_list.html', { 'users': qs[:100], 'q': q })
 
 @login_required
