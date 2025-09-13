@@ -33,9 +33,18 @@
           <div class="card-body">
             {% if messages %}
               {% for m in messages %}
-                <div class="alert alert-{{ m.tags }} alert-dismissible fade show" role="alert">
-                  {{ m }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-{{ m.tags }} alert-dismissible fade show d-flex align-items-center" role="alert">
+                  {% if 'success' in m.tags %}
+                    <i class="fa fa-check-circle me-2"></i>
+                  {% elif 'error' in m.tags %}
+                    <i class="fa fa-times-circle me-2"></i>
+                  {% elif 'warning' in m.tags %}
+                    <i class="fa fa-exclamation-triangle me-2"></i>
+                  {% else %}
+                    <i class="fa fa-info-circle me-2"></i>
+                  {% endif %}
+                  <div>{{ m }}</div>
+                  <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
                 </div>
               {% endfor %}
             {% endif %}
