@@ -7,6 +7,8 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("tracker.urls")),
+    # Add Django's authentication URLs
+    path('accounts/', include('django.contrib.auth.urls')),
 ]
 
 # In development, serve static files from STATICFILES_DIRS and app 'static/'

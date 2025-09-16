@@ -1,6 +1,6 @@
 {% extends 'tracker/base.html' %}
 {% load static %}
-{% load custom_filters %}
+{% load custom_filters tz %}
 
 {% block title %}{{ customer.full_name }} - Customer Details{% endblock %}
 
@@ -136,11 +136,18 @@
             <div class="d-flex align-items-center mb-3">
               <div class="flex-grow-1">
                 <h5 class="fw-bold mb-1">{{ customer.full_name }}</h5>
-                <small class="text-muted">Registered: {{ customer.registration_date|date:"M d, Y" }}</small>
               </div>
-              <span class="badge rounded-pill bg-secondary text-white ms-3">
-                <i class="fa fa-tag me-1"></i> {{ customer.get_customer_type_display|default:"Type" }}
-              </span>
+              <div class="d-flex align-items-center">
+                <small class="text-muted me-2">Registered: {{ customer.registration_date|localtime|date:"M d, Y H:i" }} ({{ timezone }})</small>
+                {% if customer.customer_type %}
+                  <span class="badge bg-{{ customer.customer_type|default:'secondary' }}-subtle text-{{ customer.customer_type|default:'secondary' }}">
+                    <i class="fa fa-{{ customer.get_icon_for_customer_type }} me-1"></i> {{ customer.get_customer_type_display }}
+                    {% if customer.personal_subtype %}
+                      ({{ customer.get_personal_subtype_display }})
+                    {% endif %}
+                  </span>
+                {% endif %}
+              </div>
             </div>
 
             <hr>
@@ -263,7 +270,14 @@
             </div>
             
             <h6 class="text-muted mb-3"><i class="fa fa-chart-pie me-2"></i>Order Status Breakdown</h6>
-            <div id="cdStatus" style="height:200px"></div>
+            {% if cd_status %}
+              <div id="cdStatus" style="height:200px"></div>
+            {% else %}
+              <div class="text-center text-muted py-4">
+                <i class="fa fa-chart-pie fa-2x mb-2 opacity-50"></i>
+                <p class="mb-0">No order data available</p>
+              </div>
+            {% endif %}
 
             <hr class="mt-4 mb-4">
 
@@ -305,6 +319,7 @@
                   <th>Status</th>
                   <th>Priority</th>
                   <th>Created</th>
+                  <th>Updated</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
@@ -326,7 +341,18 @@
                     <td><span class="badge bg-info text-dark">{{ order.get_type_display }}</span></td>
                     <td><span class="status-badge status-badge-{{ order.status|to_css_class }}">{{ order.get_status_display }}</span></td>
                     <td><span class="priority-badge priority-badge-{{ order.priority|to_css_class }}">{{ order.get_priority_display }}</span></td>
-                    <td><small>{{ order.created_at|date:"M d, Y H:i" }}</small></td>
+                    <td>
+                      <small>
+                        {{ order.created_at|localtime|date:"M d, Y H:i" }}
+                        <span class="d-block text-muted">{{ timezone }}</span>
+                      </small>
+                    </td>
+                    <td>
+                      <small>
+                        {{ order|order_last_update|localtime|date:"M d, Y H:i" }}
+                        <span class="d-block text-muted">{{ timezone }}</span>
+                      </small>
+                    </td>
                     <td class="text-end actions-nowrap">
                       <div class="btn-group btn-group-sm">
                         <a href="{% url 'tracker:order_detail' order.pk %}" class="btn btn-primary" title="View"><i class="fa fa-eye me-1"></i> View</a>
@@ -468,20 +494,20 @@
       // Initialize ECharts for charts
       if (window.echarts) {
         try {
-          var statusData = {{ cd_status|safe }};
+          var statusData = JSON.parse('{{ cd_status|escapejs|safe }}');
           var sEl = document.getElementById('cdStatus');
           if (sEl) {
             var s = echarts.init(sEl);
             s.setOption({
               tooltip: {
                 trigger: 'item',
-                formatter: '{b}: {c} ({d}%)'
+                formatter: '{b}: {c} ({d})%'
               },
               legend: {
                 bottom: 10,
                 left: 'center',
                 textStyle: { color: '#334155' },
-                data: statusData.labels
+                data: statusData.labels || []
               },
               series: [{
                 type: 'pie',
@@ -508,7 +534,10 @@
                 },
                 color: ['#0ea5e9','#22c55e','#f59e0b','#ef4444','#64748b'],
                 data: (statusData.labels || []).map(function(l, i) {
-                  return { name: l, value: (statusData.values || [])[i] || 0 };
+                  return { 
+                    name: l, 
+                    value: (statusData.values && statusData.values[i]) || 0 
+                  };
                 })
               }]
             });
@@ -516,7 +545,7 @@
               s.resize();
             });
           }
-        } catch(e) {
+        } catch (e) {
           console.error("Error initializing charts:", e);
         }
       }

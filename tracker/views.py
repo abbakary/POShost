@@ -54,9 +54,10 @@ class CustomLoginView(LoginView):
             return reverse('tracker:users_list')
         return reverse('tracker:dashboard')
 
-class CustomLogoutView(View):
-    def get(self, request, *args, **kwargs):
-        from django.contrib.auth import logout
+class CustomLogoutView(LogoutView):
+    next_page = 'login'  # This will use the URL name 'login' for redirection
+    
+    def dispatch(self, request, *args, **kwargs):
         try:
             from .signals import _client_ip
             ip = _client_ip(request)
@@ -64,158 +65,112 @@ class CustomLogoutView(View):
             add_audit_log(request.user, 'logout', f'Logout at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}', ip=ip, user_agent=ua)
         except Exception:
             pass
-        logout(request)
-        return redirect('tracker:login')
-
-    def post(self, request, *args, **kwargs):
-        from django.contrib.auth import logout
-        try:
-            from .signals import _client_ip
-            ip = _client_ip(request)
-            ua = (request.META.get('HTTP_USER_AGENT') or '')[:200]
-            add_audit_log(request.user, 'logout', f'Logout at {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}', ip=ip, user_agent=ua)
-        except Exception:
-            pass
-        logout(request)
-        return redirect('tracker:login')
+        return super().dispatch(request, *args, **kwargs)
 
 
 @login_required
 def dashboard(request: HttpRequest):
-    cache_key = "dashboard_metrics_v1"
+    cache_key = "dashboard_metrics_v2"  # Updated cache key
     cached = cache.get(cache_key)
+    
     if cached:
-        (
-            total_orders,
-            total_customers,
-            status_counts,
-            type_counts,
-            priority_counts,
-            completed_today_count,
-            trend_labels,
-            trend_values,
-            total_stock,
-        ) = cached
-    else:
-        total_orders = Order.objects.count()
-        total_customers = Customer.objects.count()
-        status_counts_qs = Order.objects.values("status").annotate(c=Count("id"))
-        type_counts_qs = Order.objects.values("type").annotate(c=Count("id"))
-        priority_counts_qs = Order.objects.values("priority").annotate(c=Count("id"))
-        status_counts = {x["status"]: x["c"] for x in status_counts_qs}
-        type_counts = {x["type"]: x["c"] for x in type_counts_qs}
-        priority_counts = {x["priority"]: x["c"] for x in priority_counts_qs}
-        today = timezone.localdate()
-        completed_today_count = Order.objects.filter(status="completed", completed_at__date=today).count()
-        dates = [today - timezone.timedelta(days=i) for i in range(13, -1, -1)]
-        trend_qs = (
-            Order.objects.annotate(day=TruncDate("created_at")).values("day").annotate(c=Count("id"))
-        )
-        trend_map = {row["day"]: row["c"] for row in trend_qs}
-        trend_labels = [d.strftime("%Y-%m-%d") for d in dates]
-        trend_values = [trend_map.get(d, 0) for d in dates]
-        total_stock = InventoryItem.objects.aggregate(total=Sum('quantity'))['total'] or 0
-        cache.set(cache_key, (
-            total_orders,
-            total_customers,
-            status_counts,
-            type_counts,
-            priority_counts,
-            completed_today_count,
-            trend_labels,
-            trend_values,
-            total_stock,
-        ), 60)
-
+        return render(request, 'tracker/dashboard.html', cached)
+    
+    # Basic counts
+    total_orders = Order.objects.count()
+    total_customers = Customer.objects.count()
+    
+    # Status and type distributions
+    status_counts_qs = Order.objects.values("status").annotate(c=Count("id"))
+    type_counts_qs = Order.objects.values("type").annotate(c=Count("id"))
+    priority_counts_qs = Order.objects.values("priority").annotate(c=Count("id"))
+    
+    # Convert to dictionaries for easier template access
+    status_counts = {x["status"]: x["c"] for x in status_counts_qs}
+    type_counts = {x["type"]: x["c"] for x in type_counts_qs}
+    priority_counts = {x["priority"]: x["c"] for x in priority_counts_qs}
+    
+    # Date calculations
     today = timezone.localdate()
-    pending_count = status_counts.get("created", 0)
-    in_progress_count = status_counts.get("in_progress", 0)
-    active_count = status_counts.get("created", 0) + status_counts.get("assigned", 0) + status_counts.get("in_progress", 0)
+    last_month = today - timedelta(days=30)
     
-    # Get today's customers (max 5)
-    todays_customers = Customer.objects.filter(
-        registration_date__date=today
-    ).order_by('-registration_date')[:5]
+    # Calculate completed orders and completion rate
+    completed_orders = status_counts.get('completed', 0)
+    completion_rate = (completed_orders / total_orders * 100) if total_orders > 0 else 0
     
-    # Get recent orders
-    recent_orders = (
-        Order.objects.select_related("customer", "vehicle")
-        .exclude(status="completed")
-        .order_by("-created_at")[:10]
-    )
+    # Get count of orders completed today
+    completed_today = Order.objects.filter(
+        status='completed',
+        completed_at__date=timezone.localdate()
+    ).count()
     
-    # Get overdue inventory items (items with quantity below threshold)
-    OVERDUE_THRESHOLD = 5  # Define your threshold for overdue items
-    overdue_inventory = (
-        InventoryItem.objects
-        .filter(quantity__lte=OVERDUE_THRESHOLD)
-        .order_by('quantity')[:10]  # Get top 10 most critical items
-    )
+    # New customers this month
+    new_customers_this_month = Customer.objects.filter(
+        registration_date__year=today.year,
+        registration_date__month=today.month
+    ).count()
     
-    inventory_preview = InventoryItem.objects.order_by("-created_at")[:10]
-    can_manage_inventory = (request.user.is_superuser or request.user.groups.filter(name='manager').exists())
-    completed = status_counts.get("completed", 0)
-    completed_percent = int((completed * 100) / total_orders) if total_orders else 0
+    # Calculate average order value (placeholder)
+    average_order_value = 0
     
-    # Get order statistics for the last 7 days
-    date_range = [today - timezone.timedelta(days=i) for i in range(6, -1, -1)]
-    order_stats = (
-        Order.objects.filter(created_at__date__in=date_range)
-        .values('created_at__date')
-        .annotate(count=Count('id'))
-        .order_by('created_at__date')
-    )
+    # Get pending inquiries count
+    pending_inquiries_count = Order.objects.filter(
+        type='inquiry',
+        status='pending'
+    ).count()
     
-    # Get top clients (customers with most orders) with their latest order date
-    from django.db.models import Prefetch, Max, F
+    # Get upcoming appointments (next 7 days) - using created_at as the reference date
+    upcoming_appointments = Order.objects.filter(
+        status__in=['pending', 'in_progress'],
+        created_at__date__gte=today,
+        created_at__date__lte=today + timedelta(days=7)
+    ).select_related('customer').order_by('created_at')[:5]
     
-    # Get the top 5 customers with their order count and latest order date in a single query
-    top_clients = (
-        Customer.objects
-        .annotate(
-            order_count=Count('orders'),
-            latest_order_date=Max('orders__created_at')
-        )
-        .filter(order_count__gt=0)
-        .order_by('-order_count')[:5]  # Get top 5 clients
-    )
+    # Get recent non-completed orders for the dashboard
+    recent_orders = Order.objects.select_related('customer').exclude(status='completed').order_by('-created_at')[:10]
     
-    # Create a dictionary of date: count
-    order_stats_dict = {stat['created_at__date']: stat['count'] for stat in order_stats}
+    # Get top customers by order count
+    from django.db.models import Max
+    top_customers = Customer.objects.annotate(
+        order_count=Count('orders'),
+        latest_order_date=Max('orders__created_at')
+    ).filter(order_count__gt=0).order_by('-order_count')[:5]
     
-    # Fill in missing dates with 0
-    order_stats_data = [order_stats_dict.get(date, 0) for date in date_range]
-    order_dates = [date.strftime('%a, %b %d') for date in date_range]
-    charts = {
-        "status": {
-            "labels": ["Created", "Assigned", "In Progress", "Completed", "Cancelled"],
-            "values": [
-                status_counts.get("created", 0),
-                status_counts.get("assigned", 0),
-                status_counts.get("in_progress", 0),
-                status_counts.get("completed", 0),
-                status_counts.get("cancelled", 0),
-            ],
-        },
-        "type": {
-            "labels": ["Service", "Sales", "Consultation"],
-            "values": [
-                type_counts.get("service", 0),
-                type_counts.get("sales", 0),
-                type_counts.get("consultation", 0),
-            ],
-        },
-        "priority": {
-            "labels": ["Low", "Medium", "High", "Urgent"],
-            "values": [
-                priority_counts.get("low", 0),
-                priority_counts.get("medium", 0),
-                priority_counts.get("high", 0),
-                priority_counts.get("urgent", 0),
-            ],
-        },
-        "trend": {"labels": trend_labels, "values": trend_values},
+    # Calculate status percentages
+    status_percentages = {}
+    for status, count in status_counts.items():
+        status_percentages[f'{status}_percent'] = (count / total_orders * 100) if total_orders > 0 else 0
+    
+    # Prepare context
+    context = {
+        'total_orders': total_orders,
+        'total_customers': total_customers,
+        'status_counts': status_counts,
+        'status_percentages': status_percentages,
+        'type_counts': type_counts,
+        'priority_counts': priority_counts,
+        'completed_orders': completed_orders,
+        'completed_today': completed_today,
+        'completion_rate': completion_rate,
+        'new_customers_this_month': new_customers_this_month,
+        'average_order_value': average_order_value,
+        'pending_inquiries_count': pending_inquiries_count,
+        'upcoming_appointments': upcoming_appointments,
+        'recent_orders': recent_orders,
+        'top_customers': top_customers,
+        'today': today,
     }
+    
+    # Cache for 15 minutes
+    cache.set(cache_key, context, 60 * 15)
+    
+    # Add current time to context for the 'as of' timestamp
+    context['current_time'] = timezone.now()
+    
+    # Cache for 15 minutes
+    cache.set(cache_key, context, 60 * 15)
+    
+    return render(request, 'tracker/dashboard.html', context)
 
     # Build sales_chart_json (monthly Orders vs Completed for last 12 months)
     from django.db.models.functions import TruncMonth
@@ -668,9 +623,32 @@ def customer_register(request: HttpRequest):
             if form.is_valid():
                 if action == "save_customer":
                     data = form.cleaned_data
+                    full_name = data.get("full_name")
+                    phone = data.get("phone")
+                    
+                    # Normalize phone number (remove all non-digit characters)
+                    import re
+                    normalized_phone = re.sub(r'\D', '', phone) if phone else ''
+                    
+                    # Check for existing customers with similar name and phone
+                    existing_customers = Customer.objects.filter(
+                        full_name__iexact=full_name
+                    )
+                    
+                    # Check each potential match for phone number similarity
+                    for customer in existing_customers:
+                        # Normalize stored phone number for comparison
+                        stored_phone = re.sub(r'\D', '', str(customer.phone or ''))
+                        # Check for exact or partial match (at least 6 digits matching)
+                        if len(normalized_phone) >= 6 and len(stored_phone) >= 6:
+                            if normalized_phone in stored_phone or stored_phone in normalized_phone:
+                                messages.warning(request, f'Customer already exists: {customer.full_name} ({customer.phone})')
+                                return redirect("tracker:customer_detail", pk=customer.id)
+                    
+                    # If no duplicate found, create new customer
                     c = Customer.objects.create(
-                        full_name=data.get("full_name"),
-                        phone=data.get("phone"),
+                        full_name=full_name,
+                        phone=phone,
                         email=data.get("email"),
                         address=data.get("address"),
                         notes=data.get("notes"),
@@ -709,11 +687,25 @@ def customer_register(request: HttpRequest):
                     messages.error(request, "Missing customer information. Please start from Step 1.")
                     return redirect(f"{reverse('tracker:customer_register')}?step=1")
                 
-                # Create customer with all data (customer type info is now in step1_data)
+                # Check for existing customer with same name and phone
                 data = {**step1_data, **form.cleaned_data}
+                full_name = data.get("full_name")
+                phone = data.get("phone")
+                
+                # Check for existing customer
+                existing_customer = Customer.objects.filter(
+                    full_name__iexact=full_name,
+                    phone=phone
+                ).first()
+                
+                if existing_customer:
+                    messages.info(request, f"Customer '{full_name}' with phone '{phone}' already exists. You've been redirected to their profile.")
+                    return redirect("tracker:customer_detail", pk=existing_customer.id)
+                
+                # Create new customer if no duplicate found
                 c = Customer.objects.create(
-                    full_name=data.get("full_name"),
-                    phone=data.get("phone"),
+                    full_name=full_name,
+                    phone=phone,
                     email=data.get("email"),
                     address=data.get("address"),
                     notes=data.get("notes") or data.get("additional_notes"),
@@ -871,7 +863,18 @@ def customer_register(request: HttpRequest):
 
 
 @login_required
+def start_order(request: HttpRequest):
+    """Start a new order by selecting a customer"""
+    customers = Customer.objects.all().order_by('full_name')
+    return render(request, 'tracker/select_customer.html', {
+        'customers': customers,
+        'page_title': 'Select Customer for New Order'
+    })
+
+
+@login_required
 def create_order_for_customer(request: HttpRequest, pk: int):
+    """Create a new order for a specific customer"""
     from .utils import adjust_inventory
     c = get_object_or_404(Customer, pk=pk)
     if request.method == "POST":
@@ -1110,61 +1113,63 @@ def customer_groups(request: HttpRequest):
     
     return render(request, 'tracker/customer_groups.html', context)
 
-
 @login_required
 def orders_list(request: HttpRequest):
     from django.db.models import Q, Sum
+    
+    # Get timezone from cookie or use default
+    tzname = request.COOKIES.get('django_timezone')
+    
     status = request.GET.get("status", "all")
-    type_ = request.GET.get("type", "all")
+    type_filter = request.GET.get("type", "all")
     priority = request.GET.get("priority", "")
     date_range = request.GET.get("date_range", "")
     customer_id = request.GET.get("customer", "")
 
-    qs = Order.objects.select_related("customer", "vehicle").order_by("-created_at")
-    if status != "all" and status:
-        qs = qs.filter(status=status)
-    if type_ != "all" and type_:
-        qs = qs.filter(type=type_)
-    if priority:
-        qs = qs.filter(priority=priority)
-    if customer_id:
-        qs = qs.filter(customer_id=customer_id)
-    if date_range == 'today':
-        qs = qs.filter(created_at__date=timezone.localdate())
-    elif date_range == 'week':
-        start = timezone.localdate() - timezone.timedelta(days=6)
-        qs = qs.filter(created_at__date__gte=start)
-    elif date_range == 'month':
-        start = timezone.localdate().replace(day=1)
-        qs = qs.filter(created_at__date__gte=start)
+    orders = Order.objects.select_related("customer", "vehicle").order_by("-created_at")
 
-    # Stats (global snapshot)
-    today = timezone.localdate()
+    # Apply filters
+    if status != "all":
+        orders = orders.filter(status=status)
+    if type_filter != "all":
+        orders = orders.filter(type=type_filter)
+    if priority:
+        orders = orders.filter(priority=priority)
+    if customer_id:
+        orders = orders.filter(customer_id=customer_id)
+    if date_range == "today":
+        today = timezone.localdate()
+        orders = orders.filter(created_at__date=today)
+    elif date_range == "week":
+        week_ago = timezone.now() - timedelta(days=7)
+        orders = orders.filter(created_at__gte=week_ago)
+    elif date_range == "month":
+        month_ago = timezone.now() - timedelta(days=30)
+        orders = orders.filter(created_at__gte=month_ago)
+
+    # Get counts for stats
     total_orders = Order.objects.count()
-    pending_orders = Order.objects.filter(status__in=['created','assigned']).count()
-    active_orders = Order.objects.filter(status__in=['in_progress']).count()
-    completed_today = Order.objects.filter(status='completed', completed_at__date=today).count()
-    urgent_orders = Order.objects.filter(priority='urgent').exclude(status='completed').count()
+    pending_orders = Order.objects.filter(status="created").count()
+    active_orders = Order.objects.filter(status__in=["assigned", "in_progress"]).count()
+    completed_today = Order.objects.filter(status="completed", completed_at__date=timezone.localdate()).count()
+    urgent_orders = Order.objects.filter(priority="urgent").count()
     revenue_today = 0
 
-    paginator = Paginator(qs, 20)
+    paginator = Paginator(orders, 20)
     page = request.GET.get('page')
     orders = paginator.get_page(page)
     return render(request, "tracker/orders_list.html", {
         "orders": orders,
         "status": status,
-        "type": type_,
+        "type": type_filter,
         "total_orders": total_orders,
         "pending_orders": pending_orders,
         "active_orders": active_orders,
         "completed_today": completed_today,
         "urgent_orders": urgent_orders,
         "revenue_today": revenue_today,
+        "timezone": tzname or timezone.get_current_timezone_name(),
     })
-
-
-@login_required
-def order_start(request: HttpRequest):
     # Support GET ?customer=<id> to go straight into order form for that customer
     if request.method == 'GET':
         cust_id = request.GET.get('customer')
@@ -1329,9 +1334,36 @@ def order_delete(request: HttpRequest, pk: int):
 
 
 @login_required
+def customer_detail(request: HttpRequest, pk: int):
+    customer = get_object_or_404(Customer, pk=pk)
+    orders = customer.orders.all().order_by('-created_at')
+    vehicles = customer.vehicles.all()
+    notes = customer.notes_history.all().order_by('-created_at')
+    
+    # Get timezone from cookie or use default
+    tzname = request.COOKIES.get('django_timezone')
+    
+    return render(request, "tracker/customer_detail.html", {
+        'customer': customer,
+        'orders': orders,
+        'vehicles': vehicles,
+        'notes': notes,
+        'timezone': tzname or timezone.get_current_timezone_name(),
+    })
+
+
+@login_required
 def order_detail(request: HttpRequest, pk: int):
-    o = get_object_or_404(Order, pk=pk)
-    return render(request, "tracker/order_detail.html", {"order": o})
+    order = get_object_or_404(Order, pk=pk)
+    # Get timezone from cookie or use default
+    tzname = request.COOKIES.get('django_timezone')
+    
+    # Prepare context with timezone info
+    context = {
+        "order": order,
+        "timezone": tzname or timezone.get_current_timezone_name()
+    }
+    return render(request, "tracker/order_detail.html", context)
 
 
 @login_required
@@ -2592,9 +2624,29 @@ def customers_quick_create(request: HttpRequest):
             if not full_name or not phone:
                 return JsonResponse({'success': False, 'message': 'Name and phone are required'})
 
-            # Check duplicates (exact match, minimal fields for quick create)
-            if Customer.objects.filter(full_name=full_name, phone=phone).exists():
-                return JsonResponse({'success': False, 'message': 'A customer with this full name and phone already exists'})
+            # Normalize phone number (remove all non-digit characters)
+            import re
+            normalized_phone = re.sub(r'\D', '', phone)
+            
+            # Check for existing customers with similar name and phone
+            existing_customers = Customer.objects.filter(
+                full_name__iexact=full_name
+            )
+            
+            # Check each potential match for phone number similarity
+            for customer in existing_customers:
+                # Normalize stored phone number for comparison
+                stored_phone = re.sub(r'\D', '', str(customer.phone))
+                # Check for exact or partial match (at least 6 digits matching)
+                if len(normalized_phone) >= 6 and len(stored_phone) >= 6:
+                    if normalized_phone in stored_phone or stored_phone in normalized_phone:
+                        return JsonResponse({
+                            'success': False, 
+                            'message': f'A similar customer already exists: {customer.full_name} ({customer.phone})',
+                            'customer_id': customer.id,
+                            'customer_name': customer.full_name,
+                            'customer_phone': str(customer.phone)
+                        })
 
             # Create customer
             customer = Customer.objects.create(
@@ -2979,12 +3031,58 @@ def audit_logs(request: HttpRequest):
         add_audit_log(request.user, 'audit_logs_cleared', 'Cleared all audit logs')
         messages.success(request, 'Audit logs cleared')
         return redirect('tracker:audit_logs')
-    q = request.GET.get('q','').strip()
+    
+    q = request.GET.get('q', '').strip()
+    action_filter = request.GET.get('action', '').strip()
+    user_filter = request.GET.get('user', '').strip()
+    
     logs = get_audit_logs()
-    if q:
-        ql = q.lower()
-        logs = [l for l in logs if ql in str(l.get('user','')).lower() or ql in str(l.get('action','')).lower() or ql in str(l.get('description','')).lower()]
-    return render(request, 'tracker/audit_logs.html', {'logs': logs, 'q': q})
+    
+    if q or action_filter or user_filter:
+        filtered_logs = []
+        for log in logs:
+            # Convert all searchable fields to lowercase for case-insensitive search
+            log_user = str(log.get('user', '')).lower()
+            log_action = str(log.get('action', '')).lower()
+            log_description = str(log.get('description', '')).lower()
+            log_meta = str(log.get('meta', {})).lower()
+            
+            # Apply filters
+            matches = True
+            
+            # General search (q parameter)
+            if q:
+                q = q.lower()
+                if not (q in log_user or q in log_action or q in log_description or q in log_meta):
+                    matches = False
+            
+            # Action filter
+            if matches and action_filter:
+                if action_filter.lower() not in log_action:
+                    matches = False
+            
+            # User filter
+            if matches and user_filter:
+                if user_filter.lower() not in log_user:
+                    matches = False
+            
+            if matches:
+                filtered_logs.append(log)
+        logs = filtered_logs
+    
+    # Get unique actions and users for filter dropdowns
+    all_actions = sorted(set(log.get('action', '') for log in get_audit_logs() if log.get('action')))
+    all_users = sorted(set(log.get('user', '') for log in get_audit_logs() if log.get('user')))
+    
+    context = {
+        'logs': logs,
+        'q': q,
+        'action_filter': action_filter,
+        'user_filter': user_filter,
+        'all_actions': all_actions,
+        'all_users': all_users,
+    }
+    return render(request, 'tracker/audit_logs.html', context)
 
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
@@ -3165,36 +3263,41 @@ def analytics_customer(request: HttpRequest):
             "totals": totals,
             "top_customers": top_customers,
             "today": timezone.localdate(),
-        },
+        }
     )
 
 @login_required
 def analytics_service(request: HttpRequest):
     """Service analytics focused on app categories: Tire Sales, Car Service, Inquiries."""
+    # Get filter parameters
     f_from = request.GET.get("from")
     f_to = request.GET.get("to")
-    period = request.GET.get("period", "")
+    period = request.GET.get("period", "monthly")  # Default to monthly view
     today = timezone.localdate()
 
     # Resolve period shortcuts into dates
-    if (not f_from or not f_to) and period:
-        if period == "daily":
-            f_from = f_from or today.isoformat()
-            f_to = f_to or today.isoformat()
-        elif period == "weekly":
-            start = today - timezone.timedelta(days=6)
-            f_from = f_from or start.isoformat()
-            f_to = f_to or today.isoformat()
-        elif period == "yearly":
-            start = today.replace(month=1, day=1)
-            f_from = f_from or start.isoformat()
-            f_to = f_to or today.isoformat()
-        else:  # monthly default (last 30 days)
-            start = today - timezone.timedelta(days=29)
-            f_from = f_from or start.isoformat()
-            f_to = f_to or today.isoformat()
+    if period == "daily" or (not f_from and not f_to and not period):
+        f_from = f_from or today.isoformat()
+        f_to = f_to or today.isoformat()
+        period = "daily"
+    elif period == "weekly":
+        start = today - timezone.timedelta(days=6)
+        f_from = f_from or start.isoformat()
+        f_to = f_to or today.isoformat()
+    elif period == "yearly":
+        start = today.replace(month=1, day=1)
+        f_from = f_from or start.isoformat()
+        f_to = f_to or today.isoformat()
+    else:  # monthly default (last 30 days)
+        start = today - timezone.timedelta(days=29)
+        f_from = f_from or start.isoformat()
+        f_to = f_to or today.isoformat()
+        period = "monthly"
 
-    qs = Order.objects.all()
+    # Base query for orders
+    qs = Order.objects.all().select_related('customer').prefetch_related('items')
+    
+    # Apply date filters
     if f_from:
         try:
             qs = qs.filter(created_at__date__gte=f_from)
@@ -3206,39 +3309,165 @@ def analytics_service(request: HttpRequest):
         except Exception:
             pass
 
-    # Overall counts by type and status
+    # Get counts by type and status
     by_type = {row["type"]: row["c"] for row in qs.values("type").annotate(c=Count("id"))}
     by_status = {row["status"]: row["c"] for row in qs.values("status").annotate(c=Count("id"))}
 
-    # Status by app (type)
+    # Get status by app mapping
     status_by_app_map = {
         (row["type"], row["status"]): row["c"]
         for row in qs.values("type", "status").annotate(c=Count("id"))
     }
 
-    # Trend by day and type (multi-series)
+    # Generate trend data
+    trend_days = 7 if period == "weekly" else 30 if period == "monthly" else 365 if period == "yearly" else 7
+    trend_start = today - timezone.timedelta(days=trend_days - 1)
+    
+    # Get all dates in the range for consistent x-axis
+    trend_dates = [trend_start + timezone.timedelta(days=i) for i in range(trend_days)]
+    
+    # Get unique service types for the trend data
+    service_types = qs.order_by().values_list('type', flat=True).distinct()
+    
+    # Get trend data for the selected period
     trend_qs = (
-        qs.annotate(day=TruncDate("created_at"))
-        .values("day", "type")
-        .annotate(c=Count("id"))
+        qs.annotate(day=TruncDate('created_at'))
+        .values('day', 'type')
+        .annotate(count=Count('id'))
+        .order_by('day')
     )
-    trend_map = {(row["day"], row["type"]): row["c"] for row in trend_qs}
-
-    labels = []
-    # Build date labels from f_from..f_to (reliable given period defaults above)
-    if f_from and f_to:
-        try:
-            from datetime import date, timedelta
-            start = date.fromisoformat(f_from)
-            end = date.fromisoformat(f_to)
-            days = (end - start).days
-            for i in range(days + 1):
-                d = start + timedelta(days=i)
-                labels.append(d.isoformat())
-        except Exception:
-            pass
-    # Fallback to sorted keys if parsing failed
-    if not labels and trend_map:
-        days_sorted = sorted({k[0] for k in trend_map.keys()})
-        for day in days_sorted:
-            labels.append(day.isoformat() if hasattr(day, 'isoformat') else str(day))
+    
+    # Initialize trend data structure
+    trend_data = {st: [0] * trend_days for st in service_types}
+    
+    # Fill in the trend data
+    for entry in trend_qs:
+        day = (entry['day'] - trend_start).days
+        if 0 <= day < trend_days:
+            trend_data[entry['type']][day] = entry['count']
+    
+    # Convert to list of series for the chart
+    trend_series = [
+        {"name": st, "data": trend_data[st], "type": "line", "smooth": True, "areaStyle": {}}
+        for st in service_types if st in trend_data
+    ]
+    
+    # Get service distribution data
+    service_distribution = [
+        {"value": by_type.get("tire_sales", 0), "name": "Tire Sales"},
+        {"value": by_type.get("car_service", 0), "name": "Car Service"},
+        {"value": by_type.get("inquiry", 0), "name": "Inquiries"}
+    ]
+    
+    # Get status overview data
+    status_overview = {
+        "categories": ["Pending", "In Progress", "Completed", "Cancelled"],
+        "data": [
+            by_status.get("pending", 0),
+            by_status.get("in_progress", 0),
+            by_status.get("completed", 0),
+            by_status.get("cancelled", 0)
+        ]
+    }
+    
+    # Get service performance metrics (sample data - replace with actual metrics)
+    service_performance = {
+        "indicators": [
+            {"name": "Response Time", "max": 100, "value": 78},
+            {"name": "Service Quality", "max": 100, "value": 92},
+            {"name": "Satisfaction", "max": 100, "value": 85},
+            {"name": "Completion Rate", "max": 100, "value": 94}
+        ]
+    }
+    
+    # Get tire brands data (sample data - replace with actual query)
+    tire_brands = [
+        {"value": 35, "name": "Michelin"},
+        {"value": 28, "name": "Bridgestone"},
+        {"value": 20, "name": "Goodyear"},
+        {"value": 12, "name": "Pirelli"},
+        {"value": 5, "name": "Others"}
+    ]
+    
+    # Get tire types data (sample data - replace with actual query)
+    tire_types = [
+        {"value": 40, "name": "All-Season"},
+        {"value": 30, "name": "Summer"},
+        {"value": 20, "name": "Winter"},
+        {"value": 10, "name": "Performance"}
+    ]
+    
+    # Get service types data (sample data - replace with actual query)
+    service_types_data = [
+        {"value": 35, "name": "Oil Change"},
+        {"value": 25, "name": "Brake Service"},
+        {"value": 20, "name": "Engine Check"},
+        {"value": 15, "name": "Tire Rotation"},
+        {"value": 5, "name": "Other"}
+    ]
+    
+    # Get inquiry types data (sample data - replace with actual query)
+    inquiry_types = [
+        {"value": 45, "name": "Pricing"},
+        {"value": 30, "name": "Availability"},
+        {"value": 15, "name": "Installation"},
+        {"value": 10, "name": "Other"}
+    ]
+    
+    # Calculate KPI metrics
+    total_orders = sum(by_type.values()) if by_type else 0
+    total_tire_sales = by_type.get("tire_sales", 0)
+    total_car_service = by_type.get("car_service", 0)
+    total_inquiries = by_type.get("inquiry", 0)
+    
+    # Calculate percentage changes (sample data - replace with actual calculation)
+    # This would typically compare with previous period data
+    order_change = 12.5  # Example: 12.5% increase from previous period
+    tire_sales_change = 8.2
+    car_service_change = 15.7
+    inquiry_change = -3.2
+    
+    # Calculate sums for the template
+    by_type_values_sum = sum(by_type.values()) if by_type else 0
+    
+    # Prepare context
+    context = {
+        'page_title': 'Service Analytics',
+        'period': period,
+        'f_from': f_from,
+        'f_to': f_to,
+        'today': today.isoformat(),
+        'trend_labels': [d.strftime('%b %d') for d in trend_dates],
+        'trend_series': trend_series,
+        'service_distribution': service_distribution,
+        'status_overview': status_overview,
+        'service_performance': service_performance,
+        'tire_brands': tire_brands,
+        'tire_types': tire_types,
+        'service_types': service_types_data,
+        'inquiry_types': inquiry_types,
+        'by_type': by_type,
+        'by_type_values_sum': by_type_values_sum,
+        'kpis': {
+            'total_orders': total_orders,
+            'total_tire_sales': total_tire_sales,
+            'total_car_service': total_car_service,
+            'total_inquiries': total_inquiries,
+            'order_change': order_change,
+            'tire_sales_change': tire_sales_change,
+            'car_service_change': car_service_change,
+            'inquiry_change': inquiry_change,
+        },
+        'charts_json': json.dumps({
+            'trend': trend_series,
+            'service_distribution': service_distribution,
+            'status_overview': status_overview,
+            'service_performance': service_performance,
+            'tire_brands': tire_brands,
+            'tire_types': tire_types,
+            'service_types': service_types_data,
+            'inquiry_types': inquiry_types,
+        })
+    }
+    
+    return render(request, 'tracker/analytics_service.html', context)

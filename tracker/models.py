@@ -56,6 +56,20 @@ class Customer(models.Model):
             self.arrival_time = timezone.now()
         super().save(*args, **kwargs)
 
+    def get_icon_for_customer_type(self):
+        """Return appropriate icon class based on customer type"""
+        if not self.customer_type:
+            return 'user'
+        
+        icon_map = {
+            'government': 'landmark',
+            'ngo': 'hands-helping',
+            'company': 'building',
+            'personal': 'user',
+            'bodaboda': 'motorcycle',
+        }
+        return icon_map.get(self.customer_type, 'user')
+        
     def __str__(self):
         return f"{self.full_name} ({self.code})"
 
@@ -359,9 +373,10 @@ def user_avatar_path(instance, filename):
     return f'avatars/user_{instance.user.id}/{filename}'
 
 class Profile(models.Model):
-    """User profile storing extra fields like photo."""
+    """User profile storing extra fields like photo and preferences."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     photo = models.ImageField(upload_to=user_avatar_path, blank=True, null=True, help_text='User profile picture')
+    timezone = models.CharField(max_length=100, default='UTC', help_text='User timezone for displaying dates and times')
 
     def __str__(self):
         return f"{self.user.username}'s profile"

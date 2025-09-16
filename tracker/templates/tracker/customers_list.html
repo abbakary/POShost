@@ -49,7 +49,7 @@
       </div>
       <div class="col-md-4">
         <div class="row g-2">
-          <div class="col-4"><div class="card"><div class="card-body p-2 text-center"><div class="f-12 f-light">Active</div><div class="f-w-600">{{ active_customers }}</div></div></div></div>
+ 
           <div class="col-4"><div class="card"><div class="card-body p-2 text-center"><div class="f-12 f-light">New Today</div><div class="f-w-600">{{ new_customers_today }}</div></div></div></div>
           <div class="col-4"><div class="card"><div class="card-body p-2 text-center"><div class="f-12 f-light">Returning</div><div class="f-w-600">{{ returning_customers }}</div></div></div></div>
         </div>
@@ -75,7 +75,7 @@
             <tbody>
               {% for c in customers %}
                 <tr>
-                  <td class="text-center"><img class="truck-thumb" src="{% static 'assets/images/dashboard/order-table/1.png' %}" alt="Truck"></td>
+                  <td class="text-center"><img class="truck-thumb" src="{% static 'image/truck.jpg' %}" alt="Truck" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;"></td>
                   <td class="text-nowrap">{{ c.code }}</td>
                   <td class="text-nowrap">{{ c.full_name }}</td>
                   <td>{{ c.phone }}</td>

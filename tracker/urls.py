@@ -1,10 +1,18 @@
-from django.urls import path
+from django.urls import path, include
 from django.contrib.auth import views as auth_views
+from django.views.generic import RedirectView
+from django.contrib.auth.views import LogoutView
 from . import views
+from .views import CustomLoginView, CustomLogoutView
 
 app_name = "tracker"
 
 urlpatterns = [
+    # Authentication
+    path('login/', CustomLoginView.as_view(), name='login'),
+    path('logout/', CustomLogoutView.as_view(), name='logout'),
+    
+    # Main app
     path("", views.dashboard, name="dashboard"),
     path("customers/", views.customers_list, name="customers_list"),
     path("customers/search/", views.customers_search, name="customers_search"),
@@ -22,7 +30,7 @@ urlpatterns = [
 
     path("orders/", views.orders_list, name="orders_list"),
     path("orders/export/", views.orders_export, name="orders_export"),
-    path("orders/new/", views.order_start, name="order_start"),
+    path("orders/new/", views.start_order, name="order_start"),
     path("orders/<int:pk>/", views.order_detail, name="order_detail"),
     path("orders/<int:pk>/edit/", views.order_edit, name="order_edit"),
     path("orders/<int:pk>/delete/", views.order_delete, name="order_delete"),
@@ -87,6 +95,11 @@ urlpatterns = [
     path("api/inventory/stock/", views.api_inventory_stock, name="api_inventory_stock"),
     path("api/brands/create/", views.create_brand, name="api_create_brand"),
     path("api/customers/<int:customer_id>/vehicles/", views.api_customer_vehicles, name="api_customer_vehicles"),
-    path("api/customers/check-duplicate/", views.api_check_customer_duplicate, name="api_check_customer_duplicate"),
+    # Notifications summary (canonical)
     path("api/notifications/summary/", views.api_notifications_summary, name="api_notifications_summary"),
+    # Aliases to tolerate typos/missing trailing slash
+    path("api/notifications/summary", views.api_notifications_summary),
+    path("api/notification/summary/", views.api_notifications_summary, name="api_notifications_summary_singular"),
+    path("api/notification/summary", views.api_notifications_summary),
+    path("api/customers/check-duplicate/", views.api_check_customer_duplicate, name="api_check_customer_duplicate"),
 ]

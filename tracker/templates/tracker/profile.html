@@ -72,8 +72,8 @@
       <div class="card">
         <div class="card-body text-center">
           <div class="profile-picture-container">
-            {% if profile_photo %}
-              <img id="profileImage" src="{{ profile_photo }}" alt="Profile Photo" class="profile-picture">
+            {% if user.profile.photo %}
+              <img id="profileImage" src="{{ user.profile.photo.url }}" alt="Profile Photo" class="profile-picture">
             {% else %}
               <img id="profileImage" src="{% static 'assets/images/dashboard/profile.png' %}" alt="Default Profile" class="profile-picture">
             {% endif %}

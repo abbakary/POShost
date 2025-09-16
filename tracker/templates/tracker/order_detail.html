@@ -1,5 +1,5 @@
 {% extends 'tracker/base.html' %}
-{% load static %}
+{% load static custom_filters tz %}
 
 {% block title %}Order Details{% endblock %}
 
@@ -27,9 +27,38 @@
               <div class="col-md-6"><div class="f-light">Type</div><div class="f-w-600 text-capitalize">{{ order.type }}</div></div>
               <div class="col-md-6"><div class="f-light">Status</div><div class="f-w-600 text-capitalize">{{ order.status }}</div></div>
               <div class="col-md-6"><div class="f-light">Priority</div><div class="f-w-600 text-capitalize">{{ order.priority }}</div></div>
-              <div class="col-md-6"><div class="f-light">Created</div><div class="f-w-600">{{ order.created_at|date:'Y-m-d H:i' }}</div></div>
-              {% if order.started_at %}<div class="col-md-6"><div class="f-light">Started</div><div class="f-w-600">{{ order.started_at|date:'Y-m-d H:i' }}</div></div>{% endif %}
-              {% if order.completed_at %}<div class="col-md-6"><div class="f-light">Completed</div><div class="f-w-600">{{ order.completed_at|date:'Y-m-d H:i' }}</div></div>{% endif %}
+              <div class="col-md-6">
+                <div class="f-light">Created</div>
+                <div class="f-w-600">
+                  {{ order.created_at|localtime|date:'Y-m-d H:i' }}
+                  <small class="text-muted">({{ timezone }})</small>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="f-light">Updated</div>
+                <div class="f-w-600">
+                  {{ order|order_last_update|localtime|date:'Y-m-d H:i' }}
+                  <small class="text-muted">({{ timezone }})</small>
+                </div>
+              </div>
+              {% if order.started_at %}
+              <div class="col-md-6">
+                <div class="f-light">Started</div>
+                <div class="f-w-600">
+                  {{ order.started_at|localtime|date:'Y-m-d H:i' }}
+                  <small class="text-muted">({{ timezone }})</small>
+                </div>
+              </div>
+              {% endif %}
+              {% if order.completed_at %}
+              <div class="col-md-6">
+                <div class="f-light">Completed</div>
+                <div class="f-w-600">
+                  {{ order.completed_at|localtime|date:'Y-m-d H:i' }}
+                  <small class="text-muted">({{ timezone }})</small>
+                </div>
+              </div>
+              {% endif %}
             </div>
             <hr>
             {% if order.type == 'service' %}

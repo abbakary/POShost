@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 import math
 from typing import Union, Optional
+from django import template
 
 register = template.Library()
 
@@ -133,6 +134,35 @@ def absolute_value(value):
         return value
     except Exception:
         return ''
+
+@register.filter(name='order_last_update')
+def order_last_update(order):
+    """
+    Returns the most recent timestamp for an order in priority:
+    completed_at > cancelled_at > started_at > assigned_at > created_at
+    Returns timezone-aware datetime
+    """
+    try:
+        if not order:
+            return None
+            
+        from django.utils import timezone
+        
+        for attr in ['completed_at', 'cancelled_at', 'started_at', 'assigned_at', 'created_at']:
+            val = getattr(order, attr, None)
+            if val:
+                # Ensure the datetime is timezone-aware
+                if timezone.is_naive(val):
+                    return timezone.make_aware(val, timezone=timezone.get_current_timezone())
+                return val
+                
+        # If no timestamp found, return current time as fallback
+        return timezone.now()
+        
+    except Exception as e:
+        import logging
+        logging.error(f"Error in order_last_update: {str(e)}")
+        return timezone.now() if 'timezone' in locals() else None
 
 @register.filter(name='margin_percentage')
 def margin_percentage(price: Union[float, int, str, Decimal], 

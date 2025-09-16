@@ -209,27 +209,97 @@
   // ----- Custom App Enhancements (notifications + global search) -----
   function renderNotifications(data){
     try{
+      // Update the main notification badge
       var badge = document.querySelector('.notification-box .badge');
-      if(badge){ badge.textContent = (data.counts && data.counts.total) || 0; }
+      if(!badge){
+        var container = document.querySelector('.notification-box');
+        if(container){
+          badge = document.createElement('span');
+          badge.className = 'badge rounded-pill badge-secondary';
+          badge.style.display = 'none';
+          badge.textContent = '0';
+          container.appendChild(badge);
+        }
+      }
+      if(badge) { 
+        const total = (data.counts && (data.counts.today_visitors + data.counts.low_stock + data.counts.overdue_orders)) || 0;
+        if (total > 0) {
+          badge.textContent = total;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+      
+      // Update the individual notification badges in the dropdown
+      const todayBadge = document.querySelector('.notification-dropdown .list-group-item:nth-child(1) .badge');
+      const lowStockBadge = document.querySelector('.notification-dropdown .list-group-item:nth-child(2) .badge');
+      const overdueBadge = document.querySelector('.notification-dropdown .list-group-item:nth-child(3) .badge');
+      
+      if (todayBadge && data.counts) {
+        todayBadge.textContent = data.counts.today_visitors || 0;
+        todayBadge.style.display = data.counts.today_visitors > 0 ? 'inline-flex' : 'none';
+      }
+      if (lowStockBadge && data.counts) {
+        lowStockBadge.textContent = data.counts.low_stock || 0;
+        lowStockBadge.style.display = data.counts.low_stock > 0 ? 'inline-flex' : 'none';
+      }
+      if (overdueBadge && data.counts) {
+        overdueBadge.textContent = data.counts.overdue_orders || 0;
+        overdueBadge.style.display = data.counts.overdue_orders > 0 ? 'inline-flex' : 'none';
+      }
+
+      // Update the notification dropdown content
       var bar = document.querySelector('.notification-dropdown .notitications-bar');
       if(!bar) return;
+      
       function fmtTime(iso){ try{ var d=new Date(iso); return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});}catch(e){return ''} }
       function minutesToPretty(m){ if(m==null) return ''; if(m<60) return m+"m"; var h=Math.floor(m/60); var r=m%60; return h+"h"+(r?" "+r+"m":""); }
-      var t = (data.items && data.items.today_visitors) || [], l = (data.items && data.items.low_stock) || [], o = (data.items && data.items.overdue_orders) || [];
+      
+      var t = (data.items && data.items.today_visitors) || [], 
+          l = (data.items && data.items.low_stock) || [], 
+          o = (data.items && data.items.overdue_orders) || [];
+          
       function custUrl(id){ return ("/customers/"+id+"/"); }
       function orderUrl(id){ return ("/orders/"+id+"/"); }
+      
       var html = ''+
         '<div class="mb-2 d-flex justify-content-between"><span class="f-w-600">Today\'s Visitors</span><span class="badge bg-primary">'+ ((data.counts && data.counts.today_visitors)||0) +'</span></div>'+
-        '<ul class="list-unstyled mb-3">'+ t.map(function(x){ return '<li class="mb-1"><a class="f-light f-w-500" href="'+ custUrl(x.id) +'">'+ x.name +'</a> <span class="f-12 text-muted">'+ fmtTime(x.time) +'</span></li>'; }).join('') +'</ul>'+
+        '<ul class="list-unstyled mb-3">'+ (t.length > 0 ? t.map(function(x){ return '<li class="mb-1"><a class="f-light f-w-500" href="'+ custUrl(x.id) +'">'+ x.name +'</a> <span class="f-12 text-muted">'+ fmtTime(x.time) +'</span></li>'; }).join('') : '<li class="text-muted f-12">No recent visitors</li>') +'</ul>'+
         '<div class="mb-2 d-flex justify-content-between"><span class="f-w-600">Low Stock</span><span class="badge bg-warning text-dark">'+ ((data.counts && data.counts.low_stock)||0) +'</span></div>'+
-        '<ul class="list-unstyled mb-3">'+ l.map(function(x){ return '<li class="mb-1"><span class="f-light f-w-500">'+ x.name +' ('+ (x.brand||'Unbranded') +')</span> <span class="badge bg-light text-dark">'+ x.quantity +'</span></li>'; }).join('') +'</ul>'+
+        '<ul class="list-unstyled mb-3">'+ (l.length > 0 ? l.map(function(x){ return '<li class="mb-1"><span class="f-light f-w-500">'+ x.name +' ('+ (x.brand||'Unbranded') +')</span> <span class="badge bg-light text-dark">'+ x.quantity +'</span></li>'; }).join('') : '<li class="text-muted f-12">No low stock items</li>') +'</ul>'+
         '<div class="mb-2 d-flex justify-content-between"><span class="f-w-600">Overdue Orders</span><span class="badge bg-danger">'+ ((data.counts && data.counts.overdue_orders)||0) +'</span></div>'+
-        '<ul class="list-unstyled mb-0">'+ o.map(function(x){ return '<li class="mb-1"><a class="f-light f-w-500" href="'+ orderUrl(x.id) +'">'+ x.order_number +'</a> <span class="f-12 text-muted">'+ x.customer +' • '+ x.status.replace('_',' ') +' • '+ minutesToPretty(x.age_minutes) +'</span></li>'; }).join('') +'</ul>';
+        '<ul class="list-unstyled mb-0">'+ (o.length > 0 ? o.map(function(x){ return '<li class="mb-1"><a class="f-light f-w-500" href="'+ orderUrl(x.id) +'">'+ x.order_number +'</a> <span class="f-12 text-muted">'+ x.customer +' • '+ x.status.replace('_',' ') +' • '+ minutesToPretty(x.age_minutes) +'</span></li>'; }).join('') : '<li class="text-muted f-12">No overdue orders</li>') +'</ul>';
       bar.innerHTML = html;
     }catch(e){}
   }
   function loadNotifications(){
-    fetch('/api/notifications/summary/').then(function(r){return r.json()}).then(function(j){ if(j && j.success){ renderNotifications(j); }}).catch(function(){});
+    console.log('Loading notifications...');
+    fetch('/api/notifications/summary/')
+      .then(function(response) {
+        if (!response.ok) {
+          throw new Error('Network response was not ok: ' + response.status);
+        }
+        return response.json();
+      })
+      .then(function(data) { 
+        console.log('Received notification data:', data);
+        if (data && data.success) { 
+          renderNotifications(data); 
+        } else {
+          console.error('Invalid notification data format:', data);
+        }
+      })
+      .catch(function(error) {
+        console.error('Error loading notifications:', error);
+        // Show error in UI
+        const badge = document.querySelector('.notification-box .badge');
+        if (badge) {
+          badge.textContent = '!';
+          badge.style.display = 'inline-block';
+          badge.style.backgroundColor = '#dc3545';
+        }
+      });
   }
   document.addEventListener('DOMContentLoaded', function(){
     loadNotifications();

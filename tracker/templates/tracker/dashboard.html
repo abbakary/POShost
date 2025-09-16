@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <html lang="en">
   <head>
 
@@ -150,196 +151,72 @@
               </li>
               <li class="onhover-dropdown notification-down">
                 <div class="notification-box"> 
-                  <svg> 
-                    <use href="../assets/svg/icon-sprite.svg#notification-header"></use>
-                  </svg><span class="badge rounded-pill badge-secondary">4 </span>
+                  <i data-feather="bell"></i>
+                  {% with today_visitors=today_visitors|default:0 low_stock_items=low_stock_items|default:0 overdue_orders=overdue_orders|default:0 %}
+                    {% with total_notifications=today_visitors|add:low_stock_items|add:overdue_orders %}
+                      {% if total_notifications > 0 %}
+                        <span class="badge rounded-pill badge-secondary">{{ total_notifications }}</span>
+                      {% endif %}
+                    {% endwith %}
+                  {% endwith %}
                 </div>
                 <div class="onhover-show-div notification-dropdown"> 
                   <div class="card mb-0"> 
                     <div class="card-header">
                       <div class="common-space"> 
-                        <h4 class="text-start f-w-600">Notitications</h4>
-                        <div><span>4 New</span></div>
+                        <h4 class="text-start f-w-600">Notifications</h4>
+                        <div><small class="text-muted">Summary</small></div>
                       </div>
                     </div>
-                    <div class="card-body">
-                      <div class="notitications-bar">
-                        <ul class="nav nav-pills nav-primary p-0" id="pills-tab" role="tablist">
-                          <li class="nav-item p-0"> <a class="nav-link active" id="pills-aboutus-tab" data-bs-toggle="pill" href="#pills-aboutus" role="tab" aria-controls="pills-aboutus" aria-selected="true">All(3)</a></li>
-                          <li class="nav-item p-0"> <a class="nav-link" id="pills-blog-tab" data-bs-toggle="pill" href="#pills-blog" role="tab" aria-controls="pills-blog" aria-selected="false">
-                               Messages</a></li>
-                          <li class="nav-item p-0"> <a class="nav-link" id="pills-contactus-tab" data-bs-toggle="pill" href="#pills-contactus" role="tab" aria-controls="pills-contactus" aria-selected="false">
-                               Cart  </a></li>
-                        </ul>
-                        <div class="tab-content" id="pills-tabContent">
-                          <div class="tab-pane fade show active" id="pills-aboutus" role="tabpanel" aria-labelledby="pills-aboutus-tab">
-                            <div class="user-message"> 
-                              <div class="cart-dropdown notification-all">
-                                <ul>
-                                  <li class="pr-0 pl-0 pb-3 pt-3">
-                                    <div class="media"><img class="img-fluid b-r-5 me-3 img-60" src="../assets/images/other-images/receiver-img.jpg" alt="">
-                                      <div class="media-body"><a class="f-light f-w-500" href="../template/product.html">Men Blue T-Shirt</a>
-                                        <div class="qty-box"> 
-                                          <div class="input-group"> <span class="input-group-prepend">
-                                              <button class="btn quantity-left-minus" type="button" data-type="minus" data-field="">- </button></span>
-                                            <input class="form-control input-number" type="text" name="quantity" value="1"><span class="input-group-prepend">
-                                              <button class="btn quantity-right-plus" type="button" data-type="plus" data-field="">+</button></span>
-                                          </div>
-                                        </div>
-                                        <h6 class="font-primary">$695.00</h6>
-                                      </div>
-                                      <div class="close-circle"><a class="bg-danger" href="#"><i data-feather="x"></i></a></div>
-                                    </div>
-                                  </li>
-                                </ul>
-                              </div>
-                              <ul> 
-                                <li>
-                                  <div class="user-alerts"><img class="user-image rounded-circle img-fluid me-2" src="../assets/images/dashboard/user/5.jpg" alt="user"/>
-                                    <div class="user-name">
-                                      <div> 
-                                        <h6><a class="f-w-500 f-14" href="{% url 'tracker:profile' %}">Floyd Miles</a></h6><span class="f-light f-w-500 f-12">Sir, Can i remove part in des...</span>
-                                      </div>
-                                      <div> 
-                                        <svg>
-                                          <use href="../assets/svg/icon-sprite.svg#more-vertical"></use>
-                                        </svg>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </li>
-                                <li>
-                                  <div class="user-alerts"><img class="user-image rounded-circle img-fluid me-2" src="../assets/images/dashboard/user/6.jpg" alt="user"/>
-                                    <div class="user-name">
-                                      <div> 
-                                        <h6><a class="f-w-500 f-14" href="{% url 'tracker:profile' %}">Dianne Russell</a></h6><span class="f-light f-w-500 f-12">So, what is my next work ?</span>
-                                      </div>
-                                      <div> 
-                                        <svg>
-                                          <use href="../assets/svg/icon-sprite.svg#more-vertical"></use>
-                                        </svg>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </li>
-                              </ul>
-                            </div>
-                          </div>
-                          <div class="tab-pane fade" id="pills-blog" role="tabpanel" aria-labelledby="pills-blog-tab">
-                            <div class="notification-card"> 
-                              <ul> 
-                                <li class="notification d-flex w-100 justify-content-between align-items-center">
-                                  <div class="d-flex w-100 notification-data justify-content-center align-items-center gap-2">
-                                    <div class="user-alerts flex-shrink-0"><img class="rounded-circle img-fluid img-40" src="../assets/images/dashboard/user/3.jpg" alt="user"/></div>
-                                    <div class="flex-grow-1">
-                                      <div class="common-space user-id w-100">
-                                        <div class="common-space w-100"> <a class="f-w-500 f-12" href="../template/private-chat.html">Robert D. Hambly</a></div>
-                                      </div>
-                                      <div><span class="f-w-500 f-light f-12">Hello Miss...😊</span></div>
-                                    </div><span class="f-light f-w-500 f-12">44 sec</span>
-                                  </div>
-                                </li>
-                                <li class="notification d-flex w-100 justify-content-between align-items-center">
-                                  <div class="d-flex w-100 notification-data justify-content-center align-items-center gap-2">
-                                    <div class="user-alerts flex-shrink-0"><img class="rounded-circle img-fluid img-40" src="../assets/images/dashboard/user/7.jpg" alt="user"/></div>
-                                    <div class="flex-grow-1">
-                                      <div class="common-space user-id w-100">
-                                        <div class="common-space w-100"> <a class="f-w-500 f-12" href="../template/private-chat.html">Courtney C. Strang</a></div>
-                                      </div>
-                                      <div><span class="f-w-500 f-light f-12">Wishing You a Happy Birthday Dear.. 🥳🎊</span></div>
-                                    </div><span class="f-light f-w-500 f-12">52 min</span>
-                                  </div>
-                                </li>
-                                <li class="notification d-flex w-100 justify-content-between align-items-center">
-                                  <div class="d-flex w-100 notification-data justify-content-center align-items-center gap-2">
-                                    <div class="user-alerts flex-shrink-0"><img class="rounded-circle img-fluid img-40" src="../assets/images/dashboard/user/5.jpg" alt="user"/></div>
-                                    <div class="flex-grow-1">
-                                      <div class="common-space user-id w-100">
-                                        <div class="common-space w-100"> <a class="f-w-500 f-12" href="../template/private-chat.html">Raye T. Sipes</a></div>
-                                      </div>
-                                      <div><span class="f-w-500 f-light f-12">Hello Dear!! This Theme Is Very beautiful</span></div>
-                                    </div><span class="f-light f-w-500 f-12">48 min</span>
-                                  </div>
-                                </li>
-                                <li class="notification d-flex w-100 justify-content-between align-items-center">
-                                  <div class="d-flex w-100 notification-data justify-content-center align-items-center gap-2">
-                                    <div class="user-alerts flex-shrink-0"><img class="rounded-circle img-fluid img-40" src="../assets/images/dashboard/user/6.jpg" alt="user"/></div>
-                                    <div class="flex-grow-1">
-                                      <div class="common-space user-id w-100">
-                                        <div class="common-space w-100"> <a class="f-w-500 f-12" href="../template/private-chat.html">Henry S. Miller</a></div>
-                                      </div>
-                                      <div><span class="f-w-500 f-light f-12">You’re older today than yesterday, happy birthday!</span></div>
-                                    </div><span class="f-light f-w-500 f-12">3 min</span>
-                                  </div>
-                                </li>
-                              </ul>
-                            </div>
-                          </div>
-                          <div class="tab-pane fade" id="pills-contactus" role="tabpanel" aria-labelledby="pills-contactus-tab">
-                            <div class="cart-dropdown mt-4"> 
-                              <ul>
-                                <li class="pr-0 pl-0 pb-3">
-                                  <div class="media"><img class="img-fluid b-r-5 me-3 img-60" src="../assets/images/other-images/cart-img.jpg" alt="">
-                                    <div class="media-body"><a class="f-light f-w-500" href="../template/product.html">Furniture Chair for Home</a>
-                                      <div class="qty-box">
-                                        <div class="input-group"> <span class="input-group-prepend">
-                                            <button class="btn quantity-left-minus" type="button" data-type="minus" data-field="">-</button></span>
-                                          <input class="form-control input-number" type="text" name="quantity" value="1"><span class="input-group-prepend">
-                                            <button class="btn quantity-right-plus" type="button" data-type="plus" data-field="">+</button></span>
-                                        </div>
-                                      </div>
-                                      <h6 class="font-primary">$500</h6>
-                                    </div>
-                                    <div class="close-circle"><a class="bg-danger" href="#"><i data-feather="x"></i></a></div>
-                                  </div>
-                                </li>
-                                <li class="pr-0 pl-0 pb-3 pt-3">
-                                  <div class="media"><img class="img-fluid b-r-5 me-3 img-60" src="../assets/images/other-images/receiver-img.jpg" alt="">
-                                    <div class="media-body"><a class="f-light f-w-500" href="../template/product.html">Men Cotton Blend Blue T-Shirt</a>
-                                      <div class="qty-box"> 
-                                        <div class="input-group"> <span class="input-group-prepend">
-                                            <button class="btn quantity-left-minus" type="button" data-type="minus" data-field="">- </button></span>
-                                          <input class="form-control input-number" type="text" name="quantity" value="1"><span class="input-group-prepend">
-                                            <button class="btn quantity-right-plus" type="button" data-type="plus" data-field="">+</button></span>
-                                        </div>
-                                      </div>
-                                      <h6 class="font-primary">$695.00</h6>
-                                    </div>
-                                    <div class="close-circle"><a class="bg-danger" href="#"><i data-feather="x"></i></a></div>
-                                  </div>
-                                </li>
-                                <li class="mb-3 total"><a href="../template/checkout.html">
-                                    <h6 class="mb-0">
-                                       Order Total :<span class="f-right">$1195.00  </span></h6></a></li>
-                              </ul>
-                            </div>
-                          </div>
-                          <div class="card-footer pb-0 pr-0 pl-0"> 
-                            <div class="text-center"> <a class="f-w-700" href="private-chat.html">
-                                <button class="btn btn-primary" type="button" title="btn btn-primary">Check all</button></a></div>
-                          </div>
-                        </div>
-                      </div>
+                    <div class="card-body p-0">
+                      <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                          Today's Visitors
+                          <span class="badge bg-success rounded-pill">{{ today_visitors|default:"0" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                          Low Stock Items
+                          <span class="badge bg-danger rounded-pill">{{ low_stock_items|default:"0" }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                          Overdue Orders
+                          <span class="badge bg-warning rounded-pill">{{ overdue_orders|default:"0" }}</span>
+                        </li>
+                      </ul>
                     </div>
                   </div>
                 </div>
               </li>
               <li class="profile-nav onhover-dropdown"> 
                 <div class="media profile-media">
-                  {% if profile_image %}
-                    <img class="b-r-10" src="{{ profile_image }}" alt="Profile Image">
+                  {% if user.profile.photo %}
+                    <img class="b-r-10" src="{{ user.profile.photo.url }}" alt="{{ user.get_full_name|default:user.username }}">
                   {% else %}
-                    <img class="b-r-10" src="{% static 'assets/images/dashboard/profile.png' %}" alt="Default Profile">
+                    <div class="avatar-placeholder b-r-10" style="width: 40px; height: 40px; background-color: #f0f0f0; border-radius: 5px; display: flex; align-items: center; justify-content: center;">
+                      <span style="font-size: 18px;">{{ user.get_full_name|default:user.username|first|upper }}</span>
+                    </div>
                   {% endif %}
                   <div class="media-body d-xxl-block d-none box-col-none">
-                    <div class="d-flex align-items-center gap-2"> <span>{{ user.username }}</span><i class="middle fa fa-angle-down"> </i></div>
-                    <p class="mb-0 font-roboto">Admin</p>
+                    <div class="d-flex align-items-center gap-2">
+                      <span>{{ user.get_full_name|default:user.username }}</span>
+                      <i class="middle fa fa-angle-down"></i>
+                    </div>
+                    <p class="mb-0 font-roboto">
+                      {% if user.is_superuser %}Admin{% elif user.is_staff %}Staff{% else %}User{% endif %}
+                    </p>
                   </div>
                 </div>
                 <ul class="profile-dropdown onhover-show-div">
                   <li><a href="{% url 'tracker:profile' %}"><i data-feather="user"></i><span>My Profile</span></a></li>
- 
-                  <li><a class="btn btn-pill btn-outline-primary btn-sm" href="login.html">Log Out</a></li>
+           
+                  <li>
+                    <form action="{% url 'tracker:logout' %}" method="post" style="display: inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-pill btn-outline-primary btn-sm" style="border: none; background: none; padding: 0; cursor: pointer; color: inherit;">
+                        <i data-feather="log-out"></i> Log Out
+                      </button>
+                    </form>
+                  </li>
                 </ul>
               </li>
             </ul>
@@ -360,10 +237,15 @@
       <div class="page-body-wrapper">
         <!-- Page Sidebar Start-->
         
-        <div class="sidebar-wrapper" data-layout="stroke-svg">
-          <div class="logo-wrapper"><a href="{% url 'tracker:dashboard' %}"><img class="img-fluid" src="../assets/images/logo/logo.png" alt=""></a>
-            <div class="back-btn"><i class="fa fa-angle-left"> </i></div>
-            <div class="toggle-sidebar"><i class="status_toggle middle sidebar-toggle" data-feather="grid"> </i></div>
+        <div class="sidebar-wrapper" data-layout="stroke-svg" style="overflow-y: auto;">
+          <div class="logo-wrapper" style="padding: 10px 0;">
+            <div class="text-center" style="margin-bottom: 10px;">
+              <a href="{% url 'tracker:dashboard' %}" style="display: block; padding: 0 15px;">
+                <img src="{% static 'image/stm_logo.png' %}" alt="STM Logo" style="max-width: 100%; height: auto; max-height: 50px; margin: 0 auto;">
+              </a>
+            </div>
+            <div class="back-btn" style="top: 15px;"><i class="fa fa-angle-left"></i></div>
+            <div class="toggle-sidebar" style="top: 15px;"><i class="status_toggle middle sidebar-toggle" data-feather="grid"></i></div>
           </div>
           <div class="logo-icon-wrapper"><a href="{% url 'tracker:dashboard' %}"><img class="img-fluid" src="../assets/images/logo/logo-icon.png" alt=""></a></div>
           <nav class="sidebar-main">
@@ -426,7 +308,7 @@
                   </a>
                   <ul class="sidebar-submenu">
                     <li><a href="{% url 'tracker:orders_list' %}">All Orders</a></li>
-                    <li><a href="{% url 'tracker:order_start' %}">Create Order</a></li>
+                   
                
                     <li><a href="{% url 'tracker:inquiries' %}">Inquiries</a></li>
                   </ul>
@@ -467,7 +349,8 @@
                   </a>
                 </li>
 
-                <!-- Inventory -->
+                <!-- Inventory - Only for admin and staff users -->
+                {% if user.is_superuser or user.is_staff %}
                 <li class="sidebar-list">
                   <i class="fa fa-thumb-tack"></i>
                   <a class="sidebar-link sidebar-title" href="#">
@@ -481,13 +364,13 @@
                   </a>
                   <ul class="sidebar-submenu">
                     <li><a href="{% url 'tracker:inventory_list' %}">All Items</a></li>
-          
                     <li><a href="{% url 'tracker:inventory_stock_management' %}">Stock Management</a></li>
-                    
                   </ul>
                 </li>
+                {% endif %}
 
-                <!-- System Management -->
+                <!-- System Management - Only for superusers -->
+                {% if user.is_superuser %}
                 <li class="sidebar-list">
                   <i class="fa fa-thumb-tack"></i>
                   <a class="sidebar-link sidebar-title" href="#">
@@ -503,10 +386,10 @@
                     <li><a href="{% url 'tracker:users_list' %}">User Management</a></li>
                     <li><a href="{% url 'tracker:system_settings' %}">System Settings</a></li>
                     <li><a href="{% url 'tracker:audit_logs' %}">Audit Logs</a></li>
-                    <li><a href="{% url 'tracker:backup_restore' %}">Backup/Restore</a></li>
-                 
+
                   </ul>
                 </li>
+                {% endif %}
 
               </ul>
               <div class="right-arrow" id="right-arrow"><i data-feather="arrow-right"></i></div>
@@ -537,386 +420,427 @@
           </div>
           <!-- Container-fluid starts -->
           <div class="container-fluid">
-            <div class="row"> 
-              <div class="col-xl-6 box-col-7"> 
-                <div class="card">
-                  <div class="card-header sales-chart card-no-border pb-0">
-                    <h4>Sales Chart </h4>
-                    <div class="sales-chart-dropdown">
-                      <ul class="balance-data"> 
-                        <li> <span class="circle bg-warning"></span><span class="f-light ms-1">Revenue</span></li>
-                        <li><span class="circle bg-primary"> </span><span class="f-light ms-1">Orders</span></li>
-                      </ul>
-                      <div class="sales-chart-dropdown-select">
-                        <div class="card-header-right-icon online-store">
-                          <div class="dropdown">
-                            <button class="btn dropdown-toggle dropdown-toggle-store" id="dropdownMenuButtonToggle" data-bs-toggle="dropdown" aria-expanded="false">Online Store</button>
-                            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButtonToggle" role="menu"><span class="dropdown-item">All </span><span class="dropdown-item">Employee</span><span class="dropdown-item">Client    </span></div>
-                          </div>
-                        </div>
-                        <div class="card-header-right-icon"> 
-                          <div class="dropdown"> 
-                            <button class="btn dropdown-toggle" id="salesPeriodDropdown" data-bs-toggle="dropdown" aria-expanded="false">Last Year</button>
-                            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="salesPeriodDropdown" role="menu">
-                              <span class="dropdown-item" data-period="last_year">Last Year</span>
-                              <span class="dropdown-item" data-period="last_month">This Month</span>
-                              <span class="dropdown-item" data-period="last_week">Last Week</span>
-                              <span class="dropdown-item" data-period="today">Today</span>
-                            </div>
-                          </div>
-                        </div>
+            <!-- First Row: Key Performance Indicators -->
+            <div class="row">
+              <!-- Total Sales -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center">
+                      <div class="dashboard-icon bg-primary-light">
+                        <i data-feather="cash-sign"></i>
                       </div>
-                    </div>
-                  </div>
-                  <div class="card-body p-2 pt-0">
-                    <div class="sales-wrapper">
-                      <div id="saleschart"> </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-xl-3 col-md-6 box-col-5 total-revenue-total-order">
-                <div class="row"> 
-                  <div class="col-xl-12">
-                    <div class="card"> 
-                      <div class="card-body"> 
-                        <div class="total-revenue mb-2"> <span>Total Store</span><a href="#">View Report</a></div>
-                        <h3 class="f-w-600">₹{{ total_stock }}</h3>
-                        <div class="total-chart">
-                          <div class="data-grow d-flex gap-2"><i class="font-primary" data-feather="arrow-up-right"></i><span class="f-w-500">60.00% from last year </span></div>
-                          <div class="total-revenue-chart"> 
-                            <div id="revenue"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-xl-12">
-                    <div class="card"> 
-                      <div class="card-body"> 
-                        <div class="total-revenue mb-2"> <span>Total Order   </span><a href="#">View Report</a></div>
-                        <h3 class="f-w-600">₹{{total_orders}}</h3>
-                        <div class="total-chart">
-                          <div class="data-grow d-flex gap-2"> <i class="font-secondary" data-feather="arrow-down-left"></i><span class="f-w-500">15.00% from last week</span></div>
-                          <div class="total-revenue-chart">
-                            <div id="totalOrder"></div>
-                          </div>
-                        </div>
+                      <div class="ms-3">
+                        <h6 class="mb-1">Total Sales</h6>
+                        <h3 class="f-w-600 mb-0">{{ type_counts.sales|default:0 }}</h3>
+                        <p class="mb-0 text-muted"><span class="text-success"><i class="fa fa-arrow-up"></i> 12%</span> vs last month</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="col-xl-3 col-md-6 special-Offer-banner box-col-none">
-                <div class="card">
-                  <div class="special-Offer">
-                    <div class="offer-contain">
-                      <h4>Today’s Special Offer</h4>
-                      <p class="mt-2 text-center">You can flat get 20% off on your next pro version if your sale break your last record.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-xxl-6 box-col-12"> 
-                <div class="row">
-                  <div class="col-xl-5 col-sm-6">
-                    <div class="card height-equal">
-                      <div class="card-body"> 
-                        <ul class="product-costing">
-                          <li class="product-cost">
-                            <div class="product-icon bg-primary-light">
-                              <svg>
-                                <use href="../assets/svg/icon-sprite.svg#activity"></use>
-                              </svg>
-                            </div>
-                            <div><span class="f-w-500 f-14 mb-0">Total Sales</span>
-                              <h2 class="f-w-600">₹{{ type_counts.sales|default:0 }}</h2>
-                            </div>
-                          </li>
-                          <li> <span class="f-light f-14 f-w-500">We have sale +18.2k this week.</span></li>
-                        </ul>
-                        <ul class="product-costing">
-                          <li class="product-cost">
-                            <div class="product-icon bg-warning-light">
-                              <svg>
-                                <use href="../assets/svg/icon-sprite.svg#people"></use>
-                              </svg>
-                            </div>
-                            <div><span class="f-w-500 f-14 mb-0">Total Visitors</span>
-                              <h2 class="f-w-600">{{ total_customers }}</h2>
-                            </div>
-                          </li>
-                          <li> <span class="f-light f-14 f-w-500">We have total +3.5k visitors this week.</span></li>
-                        </ul>
-                        <ul class="product-costing">
-                          <li class="product-cost">
-                            <div class="product-icon bg-light">
-                              <svg>
-                                <use href="../assets/svg/icon-sprite.svg#task-square"></use>
-                              </svg>
-                            </div>
-                            <div><span class="f-w-500 f-14 mb-0">Total Orders</span>
-                              <h2 class="f-w-600">{{ total_orders }}</h2>
-                            </div>
-                          </li>
-                          <li> <span class="f-light f-14 f-w-500">.</span></li>
-                        </ul>
-                        <ul class="product-costing">
-                          <li class="product-cost">
-                            <div class="product-icon bg-danger-light">
-                              <svg>
-                                <use href="../assets/svg/icon-sprite.svg#money-recive"></use>
-                              </svg>
-                            </div>
-                            <div><span class="f-w-500 f-14 mb-0">Refunded</span>
-                              <h2 class="f-w-600">₹{{ status_counts.cancelled|default:0 }}</h2>
-                            </div>
-                          </li>
-                          <li> <span class="f-light f-14 f-w-500">.</span></li>
-                        </ul>
+              
+              <!-- Active Customers -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center">
+                      <div class="dashboard-icon bg-success-light">
+                        <i data-feather="users"></i>
                       </div>
-                    </div>
-                  </div>
-                  <div class="col-xl-7 col-sm-6">
-                    <div class="card height-equal">
-                      <div class="card-header pb-0 total-revenue card-no-border"> 
-                        <h4>Sale History </h4><a href="index.html">View All</a>
-                      </div>
-                      <div class="card-body"> 
-                        <ul>
-                          {% for order in recent_orders|slice:":5" %}
-                          <li class="sale-history-card">
-                            <div class="history-price"><a class="f-w-500 f-14  mb-0" href="{% url 'tracker:orders_list' %}">{{ order.item_name|default:order.description|default:order.type|capfirst }}</a><span class="mb-0 txt-primary f-w-600 f-16">-</span></div>
-                            <div class="state-time"> <span class="f-w-500 f-14 f-light mb-0">{{ order.customer.customer_type|default:"" }}</span><span class="f-w-400 f-14 f-light">{{ order.created_at|timesince }} ago</span></div>
-                          </li>
-                          {% empty %}
-                          <li class="sale-history-card"><div class="history-price"><span class="f-light">No recent activity</span></div></li>
-                          {% endfor %}
-                        </ul>
+                      <div class="ms-3">
+                        <h6 class="mb-1">VISITORS</h6>
+                        <h3 class="f-w-600 mb-0">{{ total_customers }}</h3>
+                        <p class="mb-0 text-muted">{{ new_customers_this_month|default:0 }} new this month</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <div class="col-xxl-6 col-md-12 box-col-12"> 
-                <div class="card height-equal">
-                  <div class="card-header total-revenue card-no-border">
-                    <h4>Latest Orders</h4>
-                    <div class="d-flex align-items-center gap-2"><span class="update-data d-none d-md-block f-light">Data updates in every 3 hours</span>
-                      <div class="sales-chart-dropdown-select">
-                        <div class="card-header-right-icon"> 
-                          <div class="dropdown"> 
-                            <button class="btn dropdown-toggle" id="dropdownMenuButtondownMenu" data-bs-toggle="dropdown" aria-expanded="false">Today </button>
-                            <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButtondownMenu" role="menu"><span class="dropdown-item">Last Month</span><span class="dropdown-item">Last Week </span><span class="dropdown-item">Last Day</span></div>
-                          </div>
-                        </div>
+              
+              <!-- Total Orders -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center">
+                      <div class="dashboard-icon bg-warning-light">
+                        <i data-feather="shopping-bag"></i>
                       </div>
-                    </div>
-                  </div>
-                  <div class="card-body pt-0"> 
-                    <div class="table-order table-responsive custom-scrollbar">   
-                      <table class=" latest-orders w-100">
-                        <thead>
-                          <tr>
-                            <th>ORDER ID</th>
-                            <th>BILLING NAME</th>
-                            <th>TYPE</th>
-                            <th>STATUS</th>
-                            <th>INVOICE</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {% for order in recent_orders %}
-                          <tr>
-                            <td>
-                              <div class="product-name"><img class="order-table-images img-fluid" src="{% static 'assets/images/dashboard/order-table/1.png' %}" alt="product">
-                                <div class="product-sub"> <a class=" f-14 f-w-500 " href="{% url 'tracker:orders_list' %}">{{ order.item_name|default:order.description|default:order.type|capfirst }}</a><span class="f-light f-14 f-w-500 d-block">ID : {{ order.order_number }}</span></div>
-                              </div>
-                            </td>
-                            <td>
-                              <div class="product-sub"><a class="f-14 f-w-500" href="{% url 'tracker:customer_detail' order.customer.id %}">{{ order.customer.full_name }}</a><span class="f-light f-14 f-w-500 d-block">{{ order.customer.email|default:'' }}</span></div>
-                            </td>
-                            <td>
-                              <div class="product-sub"> <a class="f-14 f-w-500" href="#">&mdash;</a><span class="f-light f-14 f-w-500 d-block">{{ order.type|capfirst }}</span></div>
-                            </td>
-                            <td>
-                              {% if order.status == 'completed' %}
-                                <div class="badge-light-primary product-sub badge rounded-pill"><span>Completed</span></div>
-                              {% elif order.status == 'in_progress' %}
-                                <div class="badge-light-secondary product-sub badge rounded-pill"><span>In Progress</span></div>
-                              {% elif order.status == 'assigned' %}
-                                <div class="badge-light-warning product-sub badge rounded-pill"><span>Assigned</span></div>
-                              {% elif order.status == 'cancelled' %}
-                                <div class="badge-light-light product-sub badge rounded-pill"><span>Cancelled</span></div>
-                              {% else %}
-                                <div class="badge-light-warning product-sub badge rounded-pill"><span>{{ order.status|capfirst }}</span></div>
-                              {% endif %}
-                            </td>
-                            <td>
-                              <div class="product-sub">
-                                <svg class="invoice-icon">
-                                  <use href="../assets/svg/icon-sprite.svg#fream"></use>
-                                </svg>
-                              </div>
-                            </td>
-                          </tr>
-                          {% empty %}
-                          <tr><td colspan="5" class="text-center f-light">No recent orders</td></tr>
-                          {% endfor %}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-xxl-6 box-col-12">
-                <div class="card"> 
-                  <div class="card-header total-revenue card-no-border"> 
-                    <h4>Inventory</h4><a href="{% url 'tracker:inventory_list' %}">View All</a>
-                  </div>
-                  <div class="card-body pt-0">
-                    <div class="table-order table-responsive custom-scrollbar">
-                      <table class="order-table w-100">
-                        <thead> 
-                          <tr>
-                            <th>Product Name</th>
-                            <th>Type</th>
-                            <th>Stock</th>
-                          
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {% for item in inventory_preview %}
-                          <tr>
-                            <td>
-                              <div class="product-name"><img class="order-table-images img-fluid" src="{% static 'assets/images/ecommerce/product-table-1.png' %}" alt="item">
-                                <div class="product-sub"> <a class="f-14 f-w-600" href="{% url 'tracker:inventory_list' %}">{{ item.name }}</a></div>
-                              </div>
-                            </td>
-                            <td>
-                              <div class="product-sub"><a class="f-14 f-w-500" href="#">{{ item.brand|default:'-' }}</a></div>
-                            </td>
-                            <td>
-                              <div class="media">
-                                <div class="media-body text-end switch-sm">
-                                  <label class="switch">
-                                    <input type="checkbox" {% if item.quantity|default:0 > 0 %}checked="checked"{% endif %}><span class="switch-state"> </span>
-                                  </label>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <h6>{{ item.quantity }}</h6>
-                            </td>
-                            <td>
-                              <div class="dropdown">
-                                <div id="dropdownMenuButtonicon{{ forloop.counter }}" data-bs-toggle="dropdown" aria-expanded="false" role="menu">
-                                  <svg class="invoice-icon"> 
-                                    <use href="../assets/svg/icon-sprite.svg#more-horizontal"></use>
-                                  </svg>
-                                </div>
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButtonicon{{ forloop.counter }}"><span class="dropdown-item">Last Month</span><span class="dropdown-item">Last Week</span><span class="dropdown-item">Last Day </span></div>
-                              </div>
-                            </td>
-                          </tr>
-                          {% empty %}
-                          <tr><td colspan="5" class="text-center f-light">No inventory items</td></tr>
-                          {% endfor %}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="col-xxl-3 col-md-6 box-col-6">
-                <div class="card">
-                  <div class="card-header total-revenue card-no-border">
-                    <h4>Top Customers by Orders</h4>
-                  </div>
-                  <div class="card-body pt-0">
-                    <ul class="list-group list-group-flush">
-                      {% for c in top_clients %}
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center gap-2">
-                          <span class="badge bg-soft-primary text-primary">{{ forloop.counter }}</span>
-                          <span class="fw-600">{{ c.full_name|default:'Unknown' }}</span>
-                        </div>
-                        <div class="text-end">
-                          <span class="badge bg-light text-dark">{{ c.order_count }} orders</span>
-                          {% if c.latest_order_date %}
-                          <div class="text-muted small">Last: {{ c.latest_order_date|date:"M d, Y" }}</div>
-                          {% endif %}
-                        </div>
-                      </li>
-                      {% empty %}
-                      <li class="list-group-item text-muted">No customers found.</li>
-                      {% endfor %}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              <div class="col-xxl-3 col-md-6 box-col-6">
-                <div class="card"> 
-                  <div class="div ecommerce-banner"> </div>
-                </div>
-                <div class="col-xl-12">
-                  <div class="card product-widget">
-                    <div class="card-body new-product">
-                      <div class="product-cost">
-                        <div class="add-product">
-                          <div class="product-icon bg-light-primary">
-                            <svg> 
-                              <use href="../assets/svg/icon-sprite.svg#box-add"></use>
-                            </svg>
-                          </div>
-                          <div> 
-                            <a href="{% url 'tracker:customer_register' %}"> <h6 class="mb-1">Add New Customer</h6><span class="f-light">Add new customer to the platform</span></a>
-                          </div>
-                        </div>
-                        <div class="product-icon">
-                          <svg>
-                            <use href="../assets/svg/icon-sprite.svg#arrow-down"></use>
-                          </svg>
-                        </div>
+                      <div class="ms-3">
+                        <h6 class="mb-1">Total Orders</h6>
+                        <h3 class="f-w-600 mb-0">{{ total_orders }}</h3>
+                        <p class="mb-0 text-muted">{{ completed_orders|default:0 }} completed ({{ completion_rate|floatformat:0 }}%)</p>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="col-xl-12"> 
-                  <div class="card product-widget"> 
-                    <div class="card-body new-product"> 
-                      <div class="product-cost"> 
-                        <div class="add-product">
-                          <div class="product-icon bg-light-primary">
-                            <svg> 
-                              <use href="../assets/svg/icon-sprite.svg#receipt-disscount"></use>
-                            </svg>
-                          </div>
-                          <div>
-                           <a href="{% url 'tracker:order_start' %}"> <h6 class="mb-1">Add New Order </h6><span class="f-light"> Add new order to the platform</span></a>
-                          </div>
-                        </div>
-                        <div class="product-icon"> 
-                          <svg> 
-                            <use href="../assets/svg/icon-sprite.svg#arrow-down"></use>
-                          </svg>
-                        </div>
+              </div>
+              
+              <!-- Average Order Value -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center">
+                      <div class="dashboard-icon bg-info-light">
+                        <i data-feather="dollar-sign"></i>
+                      </div>
+                      <div class="ms-3">
+                        <h6 class="mb-1">Completed Today</h6>
+                        <h3 class="f-w-600 mb-0">{{ completed_today|default:0 }}</h3>
+                        <p class="mb-0 text-muted">as of {{ current_time|time:"h:i A" }}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+            
+            <!-- Second Row: Service Metrics -->
+            <div class="row mt-4">
+              <!-- Service Distribution -->
+              <div class="col-xxl-4 col-md-6">
+                <div class="card h-100">
+                  <div class="card-header">
+                    <h5>Service Distribution</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="serviceDistributionChart"></div>
+                    <div class="text-center mt-3">
+                      <a href="{% url 'tracker:analytics_service' %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Order Status -->
+              <div class="col-xxl-4 col-md-6">
+                <div class="card h-100">
+                  <div class="card-header">
+                    <h5>Order Status</h5>
+                  </div>
+                  <div class="card-body">
+                    <div id="orderStatusChart"></div>
+                    <div class="mt-3">
+                      {% with completed_percent=status_percentages.completed_percent|floatformat:0 %}
+                      {% with in_progress_percent=status_percentages.in_progress_percent|floatformat:0 %}
+                      {% with pending_percent=status_percentages.pending_percent|floatformat:0 %}
+                        <div class="progress-container">
+                          <div class="progress-label">
+                            <span>Completed</span>
+                            <span>{{ status_counts.completed|default:0 }} ({{ completed_percent }}%)</span>
+                          </div>
+                          <div class="progress dashboard-progress">
+                            <div class="progress-bar completed"
+                              role="progressbar"
+                              data-width="{{ completed_percent }}"
+                              aria-valuenow="{{ status_counts.completed|default:0 }}"
+                              aria-valuemin="0"
+                              aria-valuemax="{{ total_orders }}"></div>
+                          </div>
+                        </div>
+                        
+                        <div class="progress-container">
+                          <div class="progress-label">
+                            <span>In Progress</span>
+                            <span>{{ status_counts.in_progress|default:0 }} ({{ in_progress_percent }}%)</span>
+                          </div>
+                          <div class="progress dashboard-progress">
+                            <div class="progress-bar in-progress"
+                              role="progressbar"
+                              data-width="{{ in_progress_percent }}"
+                              aria-valuenow="{{ status_counts.in_progress|default:0 }}"
+                              aria-valuemin="0"
+                              aria-valuemax="{{ total_orders }}"></div>
+                          </div>
+                        </div>
+                        
+                        <div class="progress-container">
+                          <div class="progress-label">
+                            <span>Pending</span>
+                            <span>{{ status_counts.pending|default:0 }} ({{ pending_percent }}%)</span>
+                          </div>
+                          <div class="progress dashboard-progress">
+                            <div class="progress-bar pending"
+                              role="progressbar"
+                              data-width="{{ pending_percent }}"
+                              aria-valuenow="{{ status_counts.pending|default:0 }}"
+                              aria-valuemin="0"
+                              aria-valuemax="{{ total_orders }}"></div>
+                          </div>
+                        </div>
+                        
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                          document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+                            bar.style.width = bar.dataset.width + '%';
+                          });
+                        });
+                        </script>
+                      {% endwith %}
+                      {% endwith %}
+                      {% endwith %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Quick Actions -->
+          
+            </div>
+            
+            <!-- Third Row: Top Customers -->
+            <div class="col-12">
+              <div class="card h-100">
+                <div class="card-header card-no-border">
+                  <h4>Top Customers by Orders</h4>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="update-data d-none d-md-block f-light">Top customers by order volume</span>
+                    <a href="{% url 'tracker:customers_list' %}?sort=-order_count" class="ms-auto btn btn-outline-primary btn-sm">
+                      View All <i class="fa fa-arrow-right ms-1"></i>
+                    </a>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-hover table-borderless">
+                      <thead class="bg-light">
+                        <tr>
+                          <th class="ps-4">#</th>
+                          <th>Customer</th>
+                          <th>Contact</th>
+                          <th>Total Orders</th>
+                          <th>Last Order</th>
+                          <th>Total Spent</th>
+                          <th class="text-end pe-4">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for customer in top_customers %}
+                        <tr class="border-bottom">
+                          <td class="ps-4 fw-600">{{ forloop.counter }}</td>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="avatar me-2">
+                                {% if customer.photo %}
+                                <img class="rounded-circle" src="{{ customer.photo.url }}" alt="" width="32" height="32">
+                                {% else %}
+                                <div class="avatar-initial bg-soft-{% cycle 'primary' 'success' 'warning' 'danger' 'info' %} rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                  <span class="text-{% cycle 'primary' 'success' 'warning' 'danger' 'info' %} fw-600">
+                                    {{ customer.full_name|slice:":1"|upper }}
+                                  </span>
+                                </div>
+                                {% endif %}
+                              </div>
+                              <div class="fw-600">{{ customer.full_name|default:'Unknown' }}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <div class="d-flex flex-column">
+                              {% if customer.phone %}
+                              <a href="tel:{{ customer.phone }}" class="text-muted small">{{ customer.phone }}</a>
+                              {% endif %}
+                              {% if customer.email %}
+                              <a href="mailto:{{ customer.email }}" class="text-muted small text-truncate" style="max-width: 150px;" title="{{ customer.email }}">
+                                {{ customer.email }}
+                              </a>
+                              {% endif %}
+                            </div>
+                          </td>
+                          <td class="fw-600">{{ customer.order_count }} order{{ customer.order_count|pluralize }}</td>
+                          <td>
+                            {% if customer.latest_order_date %}
+                            <span class="fw-600">{{ customer.latest_order_date|date:"M d, Y" }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                          </td>
+                          <td class="fw-600">
+                            {% if customer.total_spent %}
+                            ${{ customer.total_spent|floatformat:2 }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                          </td>
+                          <td class="text-end pe-4">
+                            <div class="d-flex justify-content-end gap-2">
+                              <a href="{% url 'tracker:customer_detail' customer.id %}" class="btn btn-outline-primary btn-sm px-2">
+                                View
+                              </a>
+                              <a href="{% url 'tracker:create_order_for_customer' customer.id %}" class="btn btn-outline-success btn-sm px-2">
+                                New Order
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="7" class="text-center py-4">
+                            <div class="d-flex flex-column align-items-center">
+                              <i class="fa fa-users fa-2x text-muted mb-2"></i>
+                              <span class="text-muted">No customer data available</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fourth Row: Recent Orders -->
+            <div class="col-12">
+              <div class="card h-100">
+                <div class="card-header card-no-border">
+                  <h4>Recent Orders</h4>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="update-data d-none d-md-block f-light">Latest 10 orders</span>
+                    <a href="{% url 'tracker:orders_list' %}" class="ms-auto btn btn-outline-primary btn-sm">
+                      View All <i class="fa fa-arrow-right ms-1"></i>
+                    </a>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive custom-scrollbar" style="max-height: 400px;">
+                    <table class="table table-hover table-borderless">
+                      <thead class="bg-light">
+                        <tr>
+                          <th class="ps-4">Order #</th>
+                          <th>Customer</th>
+                          <th>Type</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                          <th class="text-end pe-4">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for order in recent_orders %}
+                        <tr class="border-bottom">
+                          <td class="ps-4">
+                            <a href="{% url 'tracker:order_detail' order.id %}" class="text-primary fw-600">#{{ order.id|stringformat:"06d" }}</a>
+                          </td>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="avatar me-2">
+                                {% if order.customer and order.customer.photo %}
+                                <img class="rounded-circle" src="{{ order.customer.photo.url }}" alt="" width="32" height="32">
+                                {% else %}
+                                <div class="avatar-initial bg-soft-{% cycle 'primary' 'success' 'warning' 'danger' 'info' %} rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                  <span class="text-{% cycle 'primary' 'success' 'warning' 'danger' 'info' %} fw-600">
+                                    {{ order.customer.full_name|default:'W'|slice:":1"|upper }}
+                                  </span>
+                                </div>
+                                {% endif %}
+                              </div>
+                              <div>
+                                <div class="fw-600">{{ order.customer.full_name|default:'Walk-in Customer' }}</div>
+                                <div class="small text-muted">{{ order.customer.phone|default:'' }}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span class="badge bg-soft-{% if order.type == 'tire' %}primary{% elif order.type == 'service' %}success{% else %}secondary{% endif %} text-{% if order.type == 'tire' %}primary{% elif order.type == 'service' %}success{% else %}secondary{% endif %}">
+                              <i class="fa fa-{% if order.type == 'tire' %}tire-rugged{% elif order.type == 'service' %}tools{% else %}shopping-cart{% endif %} me-1"></i>
+                              {{ order.get_type_display }}
+                            </span>
+                          </td>
+                          <td class="fw-600">
+                            {% if order.total_amount %}
+                            ${{ order.total_amount|floatformat:2 }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            <span class="badge bg-soft-{% if order.status == 'completed' %}success{% elif order.status == 'in_progress' %}warning{% elif order.status == 'pending' %}info{% else %}secondary{% endif %} text-{% if order.status == 'completed' %}success{% elif order.status == 'in_progress' %}warning{% elif order.status == 'pending' %}info{% else %}secondary{% endif %} p-2">
+                              <i class="fa fa-{% if order.status == 'completed' %}check-circle{% elif order.status == 'in_progress' %}spinner fa-spin{% elif order.status == 'pending' %}clock{% else %}ellipsis-h{% endif %} me-1"></i>
+                              {{ order.get_status_display }}
+                            </span>
+                          </td>
+                          <td class="text-end pe-4">
+                            <div class="d-flex flex-column">
+                              <span class="fw-600">{{ order.created_at|date:"M d, Y" }}</span>
+                              <span class="small text-muted">{{ order.created_at|time:"h:i A" }}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="6" class="text-center py-4">
+                            <div class="d-flex flex-column align-items-center">
+                              <i class="fa fa-inbox fa-2x text-muted mb-2"></i>
+                              <span class="text-muted">No recent orders found</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+            <!-- Quick Actions (Moved to Bottom) -->
+            <!-- <div class="col-12">
+              <div class="card mt-4">
+                <div class="card-header card-no-border">
+                  <h4>Quick Actions</h4>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-sm-6 col-md-4 col-lg-2">
+                      <a href="{% url 'tracker:customer_register' %}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                        <i class="fa fa-user-plus fa-2x mb-2"></i>
+                        <span>New Customer</span>
+                      </a>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-lg-2">
+                      <a href="{% url 'tracker:orders_list' %}" class="btn btn-outline-success w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                        <i class="fa fa-plus-circle fa-2x mb-2"></i>
+                        <span>New Order</span>
+                      </a>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-lg-2">
+                      <a href="{% url 'tracker:inventory_list' %}" class="btn btn-outline-info w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                        <i class="fa fa-boxes fa-2x mb-2"></i>
+                        <span>Inventory</span>
+                      </a>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-lg-2">
+                      <a href="{% url 'tracker:reports' %}" class="btn btn-outline-warning w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                        <i class="fa fa-chart-bar fa-2x mb-2"></i>
+                        <span>Reports</span>
+                      </a>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-lg-2">
+                      <a href="{% url 'tracker:analytics' %}" class="btn btn-outline-danger w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                        <i class="fa fa-chart-line fa-2x mb-2"></i>
+                        <span>Analytics</span>
+                      </a>
+                    </div>
+                    <div class="col-sm-6 col-md-4 col-lg-2">
+                      <a href="{% url 'tracker:inquiries' %}" class="btn btn-outline-secondary w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3">
+                        <i class="fa fa-question-circle fa-2x mb-2"></i>
+                        <span>Inquiries</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div> -->
           </div>
           <!-- Container-fluid Ends -->
         </div>
+
+
+
+
         <!-- footer start-->
         <footer class="footer">
           <div class="container-fluid">
             <div class="row">
               <div class="col-md-12 footer-copyright text-center">
-                <p class="mb-0">Copyright 2024 © Riho theme by pixelstrap  </p>
+                <p class="mb-0">Copyright 2025 © Superdoll.innovation Team </p>
               </div>
             </div>
           </div>
@@ -958,7 +882,7 @@
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="{% static 'assets/js/script.js' %}"></script>
-    <script src="{% static 'assets/js/theme-customizer/customizer.js' %}"></script>
+  
     <style>
       /* Ensure equal widths/heights and consistent chart containers for Total Store and Total Order */
       .total-revenue-total-order .card .total-chart .total-revenue-chart { min-height: 140px; }
@@ -1095,6 +1019,56 @@
           }
         } catch(e) { }
       })();
+    </script>
+
+    <!-- Lightweight notification updater for dashboard (no external deps) -->
+    <script>
+      (function(){
+        function ensureBadge(){
+          var box = document.querySelector('.notification-box');
+          if(!box) return null;
+          var b = box.querySelector('.badge');
+          if(!b){
+            b = document.createElement('span');
+            b.className = 'badge rounded-pill badge-secondary';
+            b.style.display = 'none';
+            b.textContent = '0';
+            box.appendChild(b);
+          }
+          return b;
+        }
+        function updateDropdownCounts(counts){
+          var items = document.querySelectorAll('.notification-dropdown .list-group-item');
+          if(items && items.length >= 3){
+            var todayBadge = items[0].querySelector('.badge');
+            var lowBadge = items[1].querySelector('.badge');
+            var overdueBadge = items[2].querySelector('.badge');
+            if(todayBadge){ todayBadge.textContent = counts.today_visitors || 0; todayBadge.style.display = counts.today_visitors > 0 ? 'inline-flex' : 'none'; }
+            if(lowBadge){ lowBadge.textContent = counts.low_stock || 0; lowBadge.style.display = counts.low_stock > 0 ? 'inline-flex' : 'none'; }
+            if(overdueBadge){ overdueBadge.textContent = counts.overdue_orders || 0; overdueBadge.style.display = counts.overdue_orders > 0 ? 'inline-flex' : 'none'; }
+          }
+        }
+        function render(data){
+          var total = (data.counts && (data.counts.today_visitors + data.counts.low_stock + data.counts.overdue_orders)) || 0;
+          var badge = ensureBadge();
+          if(badge){
+            if(total > 0){ badge.textContent = total; badge.style.display = 'inline-block'; }
+            else { badge.style.display = 'none'; }
+          }
+          if(data.counts){ updateDropdownCounts(data.counts); }
+        }
+        function load(){
+          fetch('/api/notifications/summary/')
+            .then(function(r){ return r.json(); })
+            .then(function(j){ if(j && j.success) render(j); })
+            .catch(function(){ /* silent */ });
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+          load();
+          setInterval(load, 60000);
+        });
+      })();
+      <script src="{% static 'assets/js/hide-demo-items.js' %}"></script>
     </script>
   </body>
 </html>

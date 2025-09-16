@@ -2,91 +2,531 @@
 {% load static %}
 {% block title %}Service Analytics{% endblock %}
 
+{% block extra_css %}
+<style>
+  /* Base Styles */
+  :root {
+    --primary: #4361ee;
+    --primary-dark: #3f37c9;
+    --secondary: #4895ef;
+    --success: #4cc9f0;
+    --info: #4cc9f0;
+    --warning: #f8961e;
+    --danger: #f72585;
+    --light: #f8f9fa;
+    --dark: #212529;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-400: #ced4da;
+    --gray-500: #adb5bd;
+    --gray-600: #6c757d;
+    --gray-700: #495057;
+    --gray-800: #343a40;
+    --gray-900: #212529;
+  }
+
+  /* Card Styles */
+  .card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+    background-color: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .card:hover {
+    box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .card-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1.25rem 1.5rem;
+  }
+
+  .card-title {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0;
+  }
+
+  /* Stat Cards */
+  .stat-card {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+  }
+
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  }
+
+  .stat-card .card-body {
+    padding: 1.5rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stat-icon {
+    font-size: 2.5rem;
+    opacity: 0.9;
+    margin-bottom: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    background: rgba(67, 97, 238, 0.1);
+    color: var(--primary);
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+    color: var(--gray-900);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+
+  .stat-label {
+    color: var(--gray-600);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+  }
+
+  .stat-change {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .stat-change.positive {
+    color: #10b981;
+  }
+
+  .stat-change.negative {
+    color: #ef4444;
+  }
+
+  /* Chart Containers */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 300px;
+  }
+
+  /* Filter Section */
+  .filter-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  /* Tabs */
+  .nav-tabs {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 0 1.5rem;
+    margin: 0 -1.5rem 1.5rem;
+  }
+
+  .nav-tabs .nav-link {
+    border: none;
+    color: var(--gray-600);
+    font-weight: 500;
+    padding: 1rem 1.25rem;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .nav-tabs .nav-link:hover {
+    border-color: transparent;
+    color: var(--primary);
+  }
+
+  .nav-tabs .nav-link.active {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: none;
+  }
+
+  /* Buttons */
+  .btn {
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+  }
+
+  .btn-outline-secondary {
+    border-color: var(--gray-300);
+    color: var(--gray-600);
+  }
+
+  .btn-outline-secondary:hover, 
+  .btn-outline-secondary.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+
+  /* Form Controls */
+  .form-control, .form-select {
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--gray-300);
+    transition: all 0.2s ease;
+  }
+
+  .form-control:focus, .form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.15);
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .stat-card {
+      margin-bottom: 1rem;
+    }
+    
+    .card-header {
+      padding: 1rem;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+    }
+    
+    .stat-icon {
+      font-size: 2rem;
+      width: 50px;
+      height: 50px;
+    }
+  }
+  .card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+  }
+  .card:hover {
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1);
+  }
+  .card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem 1.5rem;
+  }
+  .card-title {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
   <div class="page-title">
     <div class="row align-items-center">
-      <div class="col-6"><h4>Service Analytics</h4></div>
-      <div class="col-6"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'tracker:dashboard' %}">Dashboard</a></li><li class="breadcrumb-item"><a href="{% url 'tracker:analytics' %}">Analytics</a></li><li class="breadcrumb-item active">Service</li></ol></div>
+      <div class="col-12 col-md-6">
+        <h4>Service Analytics</h4>
+        <p class="text-muted mb-0">Comprehensive insights into your service operations</p>
+      </div>
+      <div class="col-12 col-md-6">
+        <ol class="breadcrumb justify-content-md-end mb-0">
+          <li class="breadcrumb-item"><a href="{% url 'tracker:dashboard' %}"><i class="fas fa-home"></i></a></li>
+          <li class="breadcrumb-item"><a href="{% url 'tracker:analytics' %}">Analytics</a></li>
+          <li class="breadcrumb-item active">Service</li>
+        </ol>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="container-fluid">
-  <!-- Period Tabs + Export -->
-  <ul class="nav nav-tabs mb-3">
-    <li class="nav-item"><a class="nav-link {% if period == 'daily' %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=daily">Daily</a></li>
-    <li class="nav-item"><a class="nav-link {% if period == 'weekly' %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=weekly">Weekly</a></li>
-    <li class="nav-item"><a class="nav-link {% if period == 'monthly' or not period %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=monthly">Monthly</a></li>
-    <li class="nav-item"><a class="nav-link {% if period == 'yearly' %}active{% endif %}" href="{% url 'tracker:analytics_service' %}?period=yearly">Yearly</a></li>
-    <li class="ms-auto"><a class="btn btn-outline-primary" href="{% url 'tracker:reports_export' %}?from={{ export_from }}&to={{ export_to }}"><i class="fa fa-download me-1"></i> Export Orders CSV</a></li>
-  </ul>
-
-  <!-- Custom Range Filter -->
-  <div class="card mb-3">
-    <div class="card-body">
-      <form class="row g-2 align-items-end" method="get">
-        <div class="col-sm-3"><label class="form-label">From</label><input type="date" class="form-control" name="from" value="{{ export_from }}"></div>
-        <div class="col-sm-3"><label class="form-label">To</label><input type="date" class="form-control" name="to" value="{{ export_to }}"></div>
-        <div class="col-sm-3"><label class="form-label">Period</label>
-          <select class="form-select" name="period">
-            <option value="">Custom</option>
-            <option value="daily" {% if period == 'daily' %}selected{% endif %}>Daily</option>
-            <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>Weekly</option>
-            <option value="monthly" {% if period == 'monthly' %}selected{% endif %}>Monthly</option>
-            <option value="yearly" {% if period == 'yearly' %}selected{% endif %}>Yearly</option>
+  <!-- Filters Card -->
+  <div class="card mb-4">
+    <div class="card-body p-3">
+      <form class="row g-3 align-items-end" method="get" id="filterForm">
+        <div class="col-md-3">
+          <label class="form-label">Date Range</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="far fa-calendar-alt"></i></span>
+            <input type="date" class="form-control" name="from" value="{{ f_from }}" id="dateFrom">
+            <span class="input-group-text">to</span>
+            <input type="date" class="form-control" name="to" value="{{ f_to }}" id="dateTo">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Period</label>
+          <select class="form-select" name="period" id="periodSelect">
+            <option value="">Custom Range</option>
+            <option value="daily" {% if period == 'daily' %}selected{% endif %}>Today</option>
+            <option value="weekly" {% if period == 'weekly' %}selected{% endif %}>This Week</option>
+            <option value="monthly" {% if period == 'monthly' or not period %}selected{% endif %}>This Month</option>
+            <option value="yearly" {% if period == 'yearly' %}selected{% endif %}>This Year</option>
           </select>
         </div>
-        <div class="col-sm-3 d-flex gap-2"><button class="btn btn-primary" type="submit"><i class="fa fa-filter me-1"></i> Apply</button><a class="btn btn-light" href="{% url 'tracker:analytics_service' %}">Reset</a></div>
+        <div class="col-md-6">
+          <div class="btn-group w-100">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-filter me-2"></i>Apply Filters
+            </button>
+            <a href="{% url 'tracker:analytics_service' %}" class="btn btn-outline-secondary">
+              <i class="fas fa-sync-alt"></i>
+            </a>
+            <a href="{% url 'tracker:reports_export' %}?from={{ f_from|default:'' }}&to={{ f_to|default:'' }}" class="btn btn-outline-primary">
+              <i class="fas fa-download me-2"></i>Export
+            </a>
+          </div>
+        </div>
       </form>
     </div>
   </div>
 
-  <!-- KPIs (focused by app) -->
-  <div class="row g-3">
-    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total Orders</div><div class="h3 mb-0">{{ totals.total }}</div></div></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Tire Sales</div><div class="h3 mb-0 text-primary">{{ totals.tire_sales }}</div></div></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Car Service</div><div class="h3 mb-0 text-success">{{ totals.car_service }}</div></div></div></div>
-    <div class="col-sm-6 col-xl-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Inquiries</div><div class="h3 mb-0 text-info">{{ totals.inquiries }}</div></div></div></div>
+  <!-- KPI Cards -->
+  <div class="row g-4 mb-4">
+    <!-- Total Orders -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card stat-card border-start border-primary">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Total Orders</h6>
+              <h3 class="mb-1">{{ by_type_values_sum|default:0 }}</h3>
+              <span class="text-success small">
+                <i class="fas fa-arrow-up"></i> 12% from last period
+              </span>
+            </div>
+            <div class="stat-icon bg-soft-primary rounded p-3">
+              <i class="fas fa-shopping-cart text-primary"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tire Sales -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card stat-card border-start border-success">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Tire Sales</h6>
+              <h3 class="mb-1">{{ by_type.tire_sales|default:0 }}</h3>
+              <span class="text-success small">
+                <i class="fas fa-arrow-up"></i> 8% from last period
+              </span>
+            </div>
+            <div class="stat-icon bg-soft-success rounded p-3">
+              <i class="fas fa-tire text-success"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Car Service -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card stat-card border-start border-info">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Car Service</h6>
+              <h3 class="mb-1">{{ by_type.car_service|default:0 }}</h3>
+              <span class="text-danger small">
+                <i class="fas fa-arrow-down"></i> 3% from last period
+              </span>
+            </div>
+            <div class="stat-icon bg-soft-info rounded p-3">
+              <i class="fas fa-car text-info"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Inquiries -->
+    <div class="col-md-6 col-lg-3">
+      <div class="card stat-card border-start border-warning">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="text-muted mb-2">Inquiries</h6>
+              <h3 class="mb-1">{{ by_type.inquiry|default:0 }}</h3>
+              <span class="text-success small">
+                <i class="fas fa-arrow-up"></i> 15% from last period
+              </span>
+            </div>
+            <div class="stat-icon bg-soft-warning rounded p-3">
+              <i class="fas fa-question-circle text-warning"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Charts -->
-  <div class="row mt-3 g-3">
+  <!-- Main Charts Row -->
+  <div class="row g-4">
+    <!-- Service Trend Chart -->
     <div class="col-xl-8">
-      <div class="card shadow-sm h-100">
-        <div class="card-header"><h5 class="mb-0">Service Trend by App</h5></div>
-        <div class="card-body"><div id="sTrend" style="height:360px"></div></div>
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Service Trend</h5>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary active" data-period="day">Day</button>
+            <button type="button" class="btn btn-outline-secondary" data-period="week">Week</button>
+            <button type="button" class="btn btn-outline-secondary" data-period="month">Month</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <div id="serviceTrendChart" class="h-100 w-100"></div>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- Service Distribution -->
     <div class="col-xl-4">
-      <div class="card shadow-sm mb-3 h-100">
-        <div class="card-header"><h6 class="mb-0">Service Mix (Tire Sales / Car Service / Inquiries)</h6></div>
-        <div class="card-body"><div id="sTypes" style="height:220px"></div></div>
-      </div>
-      <div class="card shadow-sm h-100">
-        <div class="card-header"><h6 class="mb-0">Status by App</h6></div>
-        <div class="card-body"><div id="sStatus" style="height:260px"></div></div>
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Service Distribution</h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <div id="serviceDistributionChart" class="h-100 w-100"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="row mt-3 g-3">
-    <div class="col-xl-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header"><h6 class="mb-0">Top Tire Brands</h6></div>
-        <div class="card-body"><div id="sBrands" style="height:320px"></div></div>
+  <!-- Second Row -->
+  <div class="row g-4 mt-4">
+    <!-- Status Overview -->
+    <div class="col-xl-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Order Status Overview</h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <div id="statusOverviewChart" class="h-100 w-100"></div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="col-xl-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header"><h6 class="mb-0">Tire Types</h6></div>
-        <div class="card-body"><div id="sTireTypes" style="height:320px"></div></div>
+
+    <!-- Service Performance -->
+    <div class="col-xl-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Service Performance</h5>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <div id="servicePerformanceChart" class="h-100 w-100"></div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="col-xl-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header"><h6 class="mb-0">Inquiry Types</h6></div>
-        <div class="card-body"><div id="sInquiries" style="height:320px"></div></div>
+  </div>
+
+  <!-- Third Row - Detailed Breakdown -->
+  <div class="row g-4 mt-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">Detailed Service Breakdown</h5>
+        </div>
+        <div class="card-body">
+          <ul class="nav nav-tabs" id="serviceTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tire-tab" data-bs-toggle="tab" data-bs-target="#tireTab" type="button" role="tab">
+                <i class="fas fa-tire me-2"></i>Tire Sales
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="service-tab" data-bs-toggle="tab" data-bs-target="#serviceTab" type="button" role="tab">
+                <i class="fas fa-car me-2"></i>Car Service
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="inquiry-tab" data-bs-toggle="tab" data-bs-target="#inquiryTab" type="button" role="tab">
+                <i class="fas fa-question-circle me-2"></i>Inquiries
+              </button>
+            </li>
+          </ul>
+          <div class="tab-content p-3 border border-top-0 rounded-bottom" id="serviceTabsContent">
+            <div class="tab-pane fade show active" id="tireTab" role="tabpanel" aria-labelledby="tire-tab">
+              <div class="row">
+                <div class="col-md-6">
+                  <h6>Top Tire Brands</h6>
+                  <div class="chart-container" style="height: 300px;">
+                    <div id="tireBrandsChart" class="h-100 w-100"></div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <h6>Tire Types</h6>
+                  <div class="chart-container" style="height: 300px;">
+                    <div id="tireTypesChart" class="h-100 w-100"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="serviceTab" role="tabpanel" aria-labelledby="service-tab">
+              <div class="chart-container" style="height: 300px;">
+                <div id="serviceTypesChart" class="h-100 w-100"></div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="inquiryTab" role="tabpanel" aria-labelledby="inquiry-tab">
+              <div class="chart-container" style="height: 300px;">
+                <div id="inquiryTypesChart" class="h-100 w-100"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -94,8 +534,482 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
-  const charts = {{ charts_json|default:'{}'|safe }};
+  // Initialize chart themes and options
+  const chartThemes = {
+    colors: ['#4361ee', '#3f37c9', '#4895ef', '#4cc9f0', '#4895ef', '#4361ee', '#3f37c9'],
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '10%',
+      containLabel: true
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      bottom: 0,
+      data: []
+    }
+  };
+
+  // Sample data - replace with actual data from your backend
+  const chartData = {
+    serviceTrend: {
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      series: [
+        { name: 'Tire Sales', data: [12, 19, 15, 27, 34, 18, 23] },
+        { name: 'Car Service', data: [8, 12, 6, 15, 21, 14, 9] },
+        { name: 'Inquiries', data: [5, 8, 4, 7, 10, 6, 9] }
+      ]
+    },
+    serviceDistribution: {
+      data: [
+        { value: 45, name: 'Tire Sales' },
+        { value: 35, name: 'Car Service' },
+        { value: 20, name: 'Inquiries' }
+      ]
+    },
+    statusOverview: {
+      categories: ['Pending', 'In Progress', 'Completed', 'Cancelled'],
+      data: [15, 22, 45, 8]
+    },
+    servicePerformance: {
+      indicators: [
+        { name: 'Response Time', max: 100, value: 78 },
+        { name: 'Service Quality', max: 100, value: 92 },
+        { name: 'Customer Satisfaction', max: 100, value: 85 },
+        { name: 'Completion Rate', max: 100, value: 94 }
+      ]
+    },
+    tireBrands: {
+      data: [
+        { value: 35, name: 'Michelin' },
+        { value: 28, name: 'Bridgestone' },
+        { value: 20, name: 'Goodyear' },
+        { value: 12, name: 'Pirelli' },
+        { value: 5, name: 'Others' }
+      ]
+    },
+    tireTypes: {
+      data: [
+        { value: 40, name: 'All-Season' },
+        { value: 30, name: 'Summer' },
+        { value: 20, name: 'Winter' },
+        { value: 10, name: 'Performance' }
+      ]
+    },
+    serviceTypes: {
+      data: [
+        { value: 35, name: 'Oil Change' },
+        { value: 25, name: 'Brake Service' },
+        { value: 20, name: 'Engine Check' },
+        { value: 15, name: 'Tire Rotation' },
+        { value: 5, name: 'Other' }
+      ]
+    },
+    inquiryTypes: {
+      data: [
+        { value: 45, name: 'Pricing' },
+        { value: 30, name: 'Availability' },
+        { value: 15, name: 'Installation' },
+        { value: 10, name: 'Other' }
+      ]
+    }
+  };
+
+  // Initialize charts when DOM is loaded
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all charts
+    initServiceTrendChart();
+    initServiceDistributionChart();
+    initStatusOverviewChart();
+    initServicePerformanceChart();
+    initTireBrandsChart();
+    initTireTypesChart();
+    initServiceTypesChart();
+    initInquiryTypesChart();
+    
+    // Handle period toggle buttons
+    document.querySelectorAll('[data-period]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        // Here you would typically reload data for the selected period
+        console.log('Selected period:', this.dataset.period);
+      });
+    });
+  });
+
+  // Service Trend Chart
+  function initServiceTrendChart() {
+    const chart = echarts.init(document.getElementById('serviceTrendChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'cross',
+          label: {
+            backgroundColor: '#6a7985'
+          }
+        }
+      },
+      legend: {
+        ...chartThemes.legend,
+        data: chartData.serviceTrend.series.map(s => s.name)
+      },
+      grid: {
+        ...chartThemes.grid,
+        top: '15%'
+      },
+      xAxis: [
+        {
+          type: 'category',
+          boundaryGap: false,
+          data: chartData.serviceTrend.days
+        }
+      ],
+      yAxis: [
+        {
+          type: 'value'
+        }
+      ],
+      series: chartData.serviceTrend.series.map((s, i) => ({
+        name: s.name,
+        type: 'line',
+        stack: 'Total',
+        smooth: true,
+        lineStyle: {
+          width: 3
+        },
+        showSymbol: false,
+        areaStyle: {
+          opacity: 0.2
+        },
+        emphasis: {
+          focus: 'series'
+        },
+        data: s.data,
+        itemStyle: {
+          color: chartThemes.colors[i % chartThemes.colors.length]
+        }
+      }))
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Service Distribution Chart
+  function initServiceDistributionChart() {
+    const chart = echarts.init(document.getElementById('serviceDistributionChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      legend: {
+        ...chartThemes.legend,
+        orient: 'vertical',
+        right: 10,
+        top: 'center',
+        data: chartData.serviceDistribution.data.map(item => item.name)
+      },
+      series: [
+        {
+          name: 'Service Distribution',
+          type: 'pie',
+          radius: ['50%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: false,
+            position: 'center'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: '18',
+              fontWeight: 'bold'
+            }
+          },
+          labelLine: {
+            show: false
+          },
+          data: chartData.serviceDistribution.data.map((item, index) => ({
+            ...item,
+            itemStyle: {
+              color: chartThemes.colors[index % chartThemes.colors.length]
+            }
+          }))
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Status Overview Chart
+  function initStatusOverviewChart() {
+    const chart = echarts.init(document.getElementById('statusOverviewChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: chartData.statusOverview.categories,
+        axisLabel: {
+          interval: 0,
+          rotate: 0
+        }
+      },
+      yAxis: {
+        type: 'value'
+      },
+      series: [
+        {
+          data: chartData.statusOverview.data.map((value, index) => ({
+            value,
+            itemStyle: {
+              color: chartThemes.colors[index % chartThemes.colors.length]
+            }
+          })),
+          type: 'bar',
+          showBackground: true,
+          backgroundStyle: {
+            color: 'rgba(180, 180, 180, 0.1)'
+          },
+          barWidth: '40%'
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Service Performance Chart
+  function initServicePerformanceChart() {
+    const chart = echarts.init(document.getElementById('servicePerformanceChart'));
+    const option = {
+      ...chartThemes,
+      radar: {
+        indicator: chartData.servicePerformance.indicators.map(item => ({
+          name: item.name,
+          max: item.max
+        })),
+        radius: '65%',
+        splitNumber: 4,
+        axisName: {
+          color: '#333',
+          fontSize: 12
+        },
+        splitArea: {
+          areaStyle: {
+            color: ['rgba(67, 97, 238, 0.1)', 'rgba(67, 97, 238, 0.2)'],
+            shadowColor: 'rgba(0, 0, 0, 0.2)',
+            shadowBlur: 10
+          }
+        },
+        axisLine: {
+          lineStyle: {
+            color: 'rgba(67, 97, 238, 0.3)'
+          }
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(67, 97, 238, 0.3)'
+          }
+        }
+      },
+      series: [
+        {
+          type: 'radar',
+          data: [
+            {
+              value: chartData.servicePerformance.indicators.map(item => item.value),
+              name: 'Performance',
+              areaStyle: {
+                color: 'rgba(67, 97, 238, 0.4)'
+              },
+              lineStyle: {
+                width: 2,
+                color: chartThemes.colors[0]
+              },
+              itemStyle: {
+                color: chartThemes.colors[0]
+              }
+            }
+          ]
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Tire Brands Chart
+  function initTireBrandsChart() {
+    const chart = echarts.init(document.getElementById('tireBrandsChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      series: [
+        {
+          name: 'Tire Brands',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          itemStyle: {
+            borderRadius: 10,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
+          label: {
+            show: true,
+            formatter: '{b}: {d}%'
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: '14',
+              fontWeight: 'bold'
+            }
+          },
+          labelLine: {
+            show: true
+          },
+          data: chartData.tireBrands.data.map((item, index) => ({
+            ...item,
+            itemStyle: {
+              color: chartThemes.colors[index % chartThemes.colors.length]
+            }
+          }))
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Tire Types Chart
+  function initTireTypesChart() {
+    const chart = echarts.init(document.getElementById('tireTypesChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      series: [
+        {
+          name: 'Tire Types',
+          type: 'pie',
+          radius: '70%',
+          center: ['50%', '50%'],
+          data: chartData.tireTypes.data.map((item, index) => ({
+            ...item,
+            itemStyle: {
+              color: chartThemes.colors[(index + 2) % chartThemes.colors.length]
+            }
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Service Types Chart
+  function initServiceTypesChart() {
+    const chart = echarts.init(document.getElementById('serviceTypesChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      series: [
+        {
+          name: 'Service Types',
+          type: 'pie',
+          radius: '70%',
+          data: chartData.serviceTypes.data.map((item, index) => ({
+            ...item,
+            itemStyle: {
+              color: chartThemes.colors[index % chartThemes.colors.length]
+            }
+  })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
+
+  // Inquiry Types Chart
+  function initInquiryTypesChart() {
+    const chart = echarts.init(document.getElementById('inquiryTypesChart'));
+    const option = {
+      ...chartThemes,
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      series: [
+        {
+          name: 'Inquiry Types',
+          type: 'pie',
+          radius: '70%',
+          data: chartData.inquiryTypes.data.map((item, index) => ({
+            ...item,
+            itemStyle: {
+              color: chartThemes.colors[(index + 1) % chartThemes.colors.length]
+            }
+          })),
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.5)'
+            }
+          }
+        }
+      ]
+    };
+    chart.setOption(option);
+    window.addEventListener('resize', chart.resize);
+  }
 
   // Pie helper
   function pie(labels, values){
