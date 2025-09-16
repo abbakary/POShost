@@ -352,7 +352,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h6 class="text-muted mb-2">Tire Sales</h6>
-              <h3 class="mb-1">{{ by_type.tire_sales|default:0 }}</h3>
+              <h3 class="mb-1">{{ by_type.sales|default:0 }}</h3>
               <span class="text-success small">
                 <i class="fas fa-arrow-up"></i> 8% from last period
               </span>
@@ -372,7 +372,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h6 class="text-muted mb-2">Car Service</h6>
-              <h3 class="mb-1">{{ by_type.car_service|default:0 }}</h3>
+              <h3 class="mb-1">{{ by_type.service|default:0 }}</h3>
               <span class="text-danger small">
                 <i class="fas fa-arrow-down"></i> 3% from last period
               </span>
@@ -392,7 +392,7 @@
           <div class="d-flex justify-content-between align-items-center">
             <div>
               <h6 class="text-muted mb-2">Inquiries</h6>
-              <h3 class="mb-1">{{ by_type.inquiry|default:0 }}</h3>
+              <h3 class="mb-1">{{ by_type.consultation|default:0 }}</h3>
               <span class="text-success small">
                 <i class="fas fa-arrow-up"></i> 15% from last period
               </span>
@@ -536,6 +536,7 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <script>
+  const charts = {{ charts_json|safe }};
   // Initialize chart themes and options
   const chartThemes = {
     colors: ['#4361ee', '#3f37c9', '#4895ef', '#4cc9f0', '#4895ef', '#4361ee', '#3f37c9'],
@@ -557,69 +558,32 @@
     }
   };
 
-  // Sample data - replace with actual data from your backend
+  // Build chartData from backend charts JSON
   const chartData = {
     serviceTrend: {
-      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      series: [
-        { name: 'Tire Sales', data: [12, 19, 15, 27, 34, 18, 23] },
-        { name: 'Car Service', data: [8, 12, 6, 15, 21, 14, 9] },
-        { name: 'Inquiries', data: [5, 8, 4, 7, 10, 6, 9] }
-      ]
+      days: (charts.trend_multi && charts.trend_multi.labels) || [],
+      series: (charts.trend_multi && charts.trend_multi.series || []).map(s => ({ name: s.name, data: s.values }))
     },
     serviceDistribution: {
-      data: [
-        { value: 45, name: 'Tire Sales' },
-        { value: 35, name: 'Car Service' },
-        { value: 20, name: 'Inquiries' }
-      ]
+      data: (charts.types && charts.types.labels || []).map((name, i) => ({ name, value: (charts.types.values || [])[i] || 0 }))
     },
     statusOverview: {
-      categories: ['Pending', 'In Progress', 'Completed', 'Cancelled'],
-      data: [15, 22, 45, 8]
-    },
-    servicePerformance: {
-      indicators: [
-        { name: 'Response Time', max: 100, value: 78 },
-        { name: 'Service Quality', max: 100, value: 92 },
-        { name: 'Customer Satisfaction', max: 100, value: 85 },
-        { name: 'Completion Rate', max: 100, value: 94 }
-      ]
+      categories: (charts.status_by_app && charts.status_by_app.apps) || [],
+      data: (charts.status_by_app && charts.status_by_app.series || []).reduce((acc, s) => acc.map((v, i) => v + ((s.data || [])[i] || 0)), new Array(((charts.status_by_app && charts.status_by_app.apps) || []).length).fill(0))
     },
     tireBrands: {
-      data: [
-        { value: 35, name: 'Michelin' },
-        { value: 28, name: 'Bridgestone' },
-        { value: 20, name: 'Goodyear' },
-        { value: 12, name: 'Pirelli' },
-        { value: 5, name: 'Others' }
-      ]
+      data: (charts.top_brands && charts.top_brands.labels || []).map((name, i) => ({ name, value: (charts.top_brands.values || [])[i] || 0 }))
     },
     tireTypes: {
-      data: [
-        { value: 40, name: 'All-Season' },
-        { value: 30, name: 'Summer' },
-        { value: 20, name: 'Winter' },
-        { value: 10, name: 'Performance' }
-      ]
+      data: (charts.tire_types && charts.tire_types.labels || []).map((name, i) => ({ name, value: (charts.tire_types.values || [])[i] || 0 }))
     },
     serviceTypes: {
-      data: [
-        { value: 35, name: 'Oil Change' },
-        { value: 25, name: 'Brake Service' },
-        { value: 20, name: 'Engine Check' },
-        { value: 15, name: 'Tire Rotation' },
-        { value: 5, name: 'Other' }
-      ]
+      data: (charts.service_types && charts.service_types.labels || []).map((name, i) => ({ name, value: (charts.service_types.values || [])[i] || 0 }))
     },
     inquiryTypes: {
-      data: [
-        { value: 45, name: 'Pricing' },
-        { value: 30, name: 'Availability' },
-        { value: 15, name: 'Installation' },
-        { value: 10, name: 'Other' }
-      ]
-    }
+      data: (charts.inquiry_types && charts.inquiry_types.labels || []).map((name, i) => ({ name, value: (charts.inquiry_types.values || [])[i] || 0 }))
+    },
+    servicePerformance: { indicators: charts.service_performance || [] }
   };
 
   // Initialize charts when DOM is loaded
@@ -639,8 +603,11 @@
       btn.addEventListener('click', function() {
         document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
         this.classList.add('active');
-        // Here you would typically reload data for the selected period
-        console.log('Selected period:', this.dataset.period);
+        const p = this.dataset.period;
+        const sel = document.getElementById('periodSelect');
+        if (sel) { sel.value = p === 'day' ? 'daily' : (p === 'week' ? 'weekly' : 'monthly'); }
+        const form = document.getElementById('filterForm');
+        if (form) form.submit();
       });
     });
   });
