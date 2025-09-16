@@ -225,6 +225,34 @@ def dashboard(request: HttpRequest):
         "completed": [daily_completed_map.get(d, 0) for d in last_8_days],
     }
 
+    # Top customers by orders per period
+    def _period_range(name):
+        if name == "today":
+            return today, today
+        if name == "yesterday":
+            y = today - timezone.timedelta(days=1)
+            return y, y
+        if name == "last_week":
+            return today - timezone.timedelta(days=6), today
+        # last_month (previous calendar month)
+        start = (today.replace(day=1) - timezone.timedelta(days=1)).replace(day=1)
+        end = today.replace(day=1) - timezone.timedelta(days=1)
+        return start, end
+
+    top_orders_json_data = {}
+    for p in ["today", "yesterday", "last_week", "last_month"]:
+        start_d, end_d = _period_range(p)
+        rows = (
+            Order.objects.filter(created_at__date__gte=start_d, created_at__date__lte=end_d)
+            .values("customer__full_name")
+            .annotate(c=Count("id"))
+            .order_by("-c")[:5]
+        )
+        top_orders_json_data[p] = {
+            "labels": [r["customer__full_name"] or "Unknown" for r in rows],
+            "values": [r["c"] for r in rows],
+        }
+
     context = {
         **metrics,
         "recent_orders": recent_orders,
@@ -233,16 +261,7 @@ def dashboard(request: HttpRequest):
         "sales_chart_json": json.dumps(sales_chart),
         "sales_chart_periods_json": json.dumps(sales_periods),
         "total_order_spark_json": json.dumps(total_order_spark),
-        "top_orders_json": json.dumps({
-            p: {
-                "labels": [row["customer__full_name"] or "Unknown" for row in Order.objects.filter(
-                    created_at__date__gte=_period_range := ((today, today) if p=="today" else ((today - timezone.timedelta(days=1), today - timezone.timedelta(days=1)) if p=="yesterday" else ((today - timezone.timedelta(days=6), today) if p=="last_week" else (((today.replace(day=1) - timezone.timedelta(days=1)).replace(day=1), today.replace(day=1) - timezone.timedelta(days=1)))))
-                ).values("customer__full_name").annotate(c=Count("id")).order_by("-c")[:5]],
-                "values": [row["c"] for row in Order.objects.filter(
-                    created_at__date__gte=_period_range[0], created_at__date__lte=_period_range[1]
-                ).values("customer__full_name").annotate(c=Count("id")).order_by("-c")[:5]],
-            } for p in ["today","yesterday","last_week","last_month"]
-        }),
+        "top_orders_json": json.dumps(top_orders_json_data),
     }
     return render(request, "tracker/dashboard.html", context)
 
