@@ -120,7 +120,8 @@ def dashboard(request: HttpRequest):
 
         top_customers = (
             Customer.objects.annotate(
-                order_count=Count("orders"), latest_order_date=Max("orders__created_at")
+                order_count=Count("orders"),
+                latest_order_date=Max("orders__created_at")
             )
             .filter(order_count__gt=0)
             .order_by("-order_count")[:5]
@@ -130,23 +131,42 @@ def dashboard(request: HttpRequest):
         for s, c in status_counts.items():
             status_percentages[f"{s}_percent"] = (c / total_orders * 100) if total_orders > 0 else 0
 
+        # Get inventory metrics
+        from django.db.models import Sum, Q
+        from tracker.models import InventoryItem
+        
+        # Total inventory items count
+        total_inventory_items = InventoryItem.objects.count()
+        
+        # Sum of all quantities in stock
+        total_stock = InventoryItem.objects.aggregate(total=Sum('quantity'))['total'] or 0
+        
+        # Count of low stock items (quantity <= reorder_level)
+        low_stock_count = InventoryItem.objects.filter(quantity__lte=F('reorder_level')).count()
+        
+        # Count of out of stock items
+        out_of_stock_count = InventoryItem.objects.filter(quantity=0).count()
+        
         metrics = {
-            "total_orders": total_orders,
-            "total_customers": total_customers,
-            "status_counts": status_counts,
-            "status_percentages": status_percentages,
-            "type_counts": type_counts,
-            "priority_counts": priority_counts,
-            "completed_orders": completed_orders,
-            "completion_rate": completion_rate,
-            "new_customers_this_month": new_customers_this_month,
-            "average_order_value": average_order_value,
-            "pending_inquiries_count": pending_inquiries_count,
-            "upcoming_appointments": upcoming_appointments,
-            "top_customers": top_customers,
-            "today": today,
+            'total_orders': total_orders,
+            'total_customers': total_customers,
+            'completion_rate': round(completion_rate, 1),
+            'status_counts': status_counts,
+            'type_counts': type_counts,
+            'priority_counts': priority_counts,
+            'new_customers_this_month': new_customers_this_month,
+            'pending_inquiries_count': pending_inquiries_count,
+            'average_order_value': average_order_value,
+            'upcoming_appointments': list(upcoming_appointments.values('id', 'customer__full_name', 'created_at')),
+            'top_customers': list(top_customers.values('id', 'full_name', 'order_count', 'phone', 'email', 'total_spent', 'latest_order_date')),
+            'recent_orders': list(Order.objects.select_related("customer").exclude(status="completed").order_by("-created_at").values('id', 'customer__full_name', 'status', 'created_at')[:10]),
+            'inventory_metrics': {
+                'total_items': total_inventory_items,
+                'total_stock': total_stock,
+                'low_stock_count': low_stock_count,
+                'out_of_stock_count': out_of_stock_count,
+            }
         }
-        # Short TTL to keep dashboard fresh
         cache.set(cache_key, metrics, 60)
 
     # Always fresh data for fast-updating sections
@@ -253,6 +273,9 @@ def dashboard(request: HttpRequest):
             "values": [r["c"] for r in rows],
         }
 
+    # Add inventory metrics to context
+    inventory_metrics = metrics.get('inventory_metrics', {})
+    
     context = {
         **metrics,
         "recent_orders": recent_orders,
@@ -262,6 +285,7 @@ def dashboard(request: HttpRequest):
         "sales_chart_periods_json": json.dumps(sales_periods),
         "total_order_spark_json": json.dumps(total_order_spark),
         "top_orders_json": json.dumps(top_orders_json_data),
+        "inventory_metrics": inventory_metrics,  # Add inventory metrics to template context
     }
     return render(request, "tracker/dashboard.html", context)
 

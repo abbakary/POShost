@@ -422,6 +422,66 @@
           <div class="container-fluid">
             <!-- First Row: Key Performance Indicators -->
             <div class="row">
+              <!-- Total Inventory -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card o-hidden">
+                  <div class="bg-primary b-r-4 card-body">
+                    <div class="media static-top-widget">
+                      <div class="align-self-center text-center"><i data-feather="package"></i></div>
+                      <div class="media-body">
+                        <span class="m-0">Total Inventory</span>
+                        <h4 class="mb-0 counter">{{ inventory_metrics.total_stock|default:0|intcomma }}</h4>
+                        <i class="icon-bg" data-feather="package"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Low Stock Items -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card o-hidden">
+                  <div class="bg-secondary b-r-4 card-body">
+                    <div class="media static-top-widget">
+                      <div class="align-self-center text-center"><i data-feather="alert-triangle"></i></div>
+                      <div class="media-body">
+                        <span class="m-0">Low Stock Items</span>
+                        <h4 class="mb-0 counter">{{ inventory_metrics.low_stock_count|default:0 }}</h4>
+                        <i class="icon-bg" data-feather="alert-triangle"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Out of Stock -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card o-hidden">
+                  <div class="bg-danger b-r-4 card-body">
+                    <div class="media static-top-widget">
+                      <div class="align-self-center text-center"><i data-feather="x-octagon"></i></div>
+                      <div class="media-body">
+                        <span class="m-0">Out of Stock</span>
+                        <h4 class="mb-0 counter">{{ inventory_metrics.out_of_stock_count|default:0 }}</h4>
+                        <i class="icon-bg" data-feather="x-octagon"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Total Items -->
+              <div class="col-xxl-3 col-sm-6">
+                <div class="card o-hidden">
+                  <div class="bg-success b-r-4 card-body">
+                    <div class="media static-top-widget">
+                      <div class="align-self-center text-center"><i data-feather="layers"></i></div>
+                      <div class="media-body">
+                        <span class="m-0">Total Items</span>
+                        <h4 class="mb-0 counter">{{ inventory_metrics.total_items|default:0 }}</h4>
+                        <i class="icon-bg" data-feather="layers"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
               <!-- Total Sales -->
               <div class="col-xxl-3 col-sm-6">
                 <div class="card h-100">
@@ -663,12 +723,16 @@
                           </td>
                           <td class="text-end pe-4">
                             <div class="d-flex justify-content-end gap-2">
+                              {% if customer.id %}
                               <a href="{% url 'tracker:customer_detail' customer.id %}" class="btn btn-outline-primary btn-sm px-2">
                                 View
                               </a>
                               <a href="{% url 'tracker:create_order_for_customer' customer.id %}" class="btn btn-outline-success btn-sm px-2">
                                 New Order
                               </a>
+                              {% else %}
+                              <span class="text-muted small">No actions available</span>
+                              {% endif %}
                             </div>
                           </td>
                         </tr>

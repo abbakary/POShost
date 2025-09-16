@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: pos-tracker
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn pos_tracker.wsgi:application --log-file -"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: IS_RENDER
+        value: "true"
+      - key: DISABLE_COLLECTSTATIC
+        value: "0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: "4"
+    plan: free

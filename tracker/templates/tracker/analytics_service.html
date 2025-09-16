@@ -1026,52 +1026,116 @@
     }
   }
 
+  // Parse the charts data from the template context
+  const chartsData = JSON.parse('{{ charts_json|escapejs }}');
+
   document.addEventListener('DOMContentLoaded',()=>{
-    if(window.echarts && charts){
+    if(window.echarts && chartsData){
       // Multi-series trend
-      if(document.getElementById('sTrend')){
+      if(document.getElementById('sTrend') && chartsData.trend_multi){
+        const trendData = chartsData.trend_multi;
+        const chart = echarts.init(document.getElementById('sTrend'));
+        chart.setOption({
+          tooltip: { trigger: 'axis' },
+          legend: { data: trendData.series.map(s => s.name) },
+          grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+          xAxis: { type: 'category', boundaryGap: false, data: trendData.labels },
+          yAxis: { type: 'value' },
+          series: trendData.series.map(s => ({
+            name: s.name,
+            type: 'line',
+            data: s.values,
+            smooth: true,
+            lineStyle: { width: 3 },
+            showSymbol: false
+          }))
+        });
+        window.addEventListener('resize', function() { chart.resize(); });
+      }
         const el = document.getElementById('sTrend');
-        const t = charts.trend_multi||{};
+        const t = chartsData.trend_multi||{};
         const any = (t.series||[]).some(s => (s.values||[]).some(v => (v||0) > 0));
         if(any){ echarts.init(el).setOption(lineMulti(t.labels||[], t.series||[])); }
         else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
       }
-      // Mix by app
-      if(document.getElementById('sTypes')){
+      // Service distribution pie
+      if(document.getElementById('sDist') && chartsData.types){
+        const chart = echarts.init(document.getElementById('sDist'));
+        chart.setOption({
+          tooltip: { trigger: 'item' },
+          legend: { orient: 'vertical', right: 10, top: 'center' },
+          series: [{
+            name: 'Service Distribution',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+            label: { show: true, formatter: '{b}: {c} ({d}%)' },
+            emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' } },
+            data: chartsData.types.labels.map((label, i) => ({
+              value: chartsData.types.values[i],
+              name: label
+            }))
+          }]
+        });
+        window.addEventListener('resize', function() { chart.resize(); });
+      }
         const el = document.getElementById('sTypes');
-        const p = charts.types||{};
+        const p = chartsData.types||{};
         const any = (p.values||[]).some(v => (v||0) > 0);
         if(any){ echarts.init(el).setOption(pie(p.labels||[], p.values||[])); }
         else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
       }
-      // Status by app (stacked)
-      if(document.getElementById('sStatus')){
+      // Status overview
+      if(document.getElementById('sStatus') && chartsData.status_by_app){
+        const chart = echarts.init(document.getElementById('sStatus'));
+        chart.setOption({
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+          legend: { data: chartsData.status_by_app.series.map(s => s.name) },
+          grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+          xAxis: { type: 'value' },
+          yAxis: {
+            type: 'category',
+            data: chartsData.status_by_app.apps,
+            axisLabel: { interval: 0, rotate: 0 }
+          },
+          series: chartsData.status_by_app.series.map(s => ({
+            name: s.name,
+            type: 'bar',
+            stack: 'total',
+            label: { show: true, position: 'inside' },
+            emphasis: { focus: 'series' },
+            data: s.data
+          }))
+        });
+        window.addEventListener('resize', function() { chart.resize(); });
+      }
         const el = document.getElementById('sStatus');
-        const s = charts.status_by_app||{};
+        const s = chartsData.status_by_app||{};
         const any = (s.series||[]).some(sr => (sr.data||[]).some(v => (v||0) > 0));
         if(any){ echarts.init(el).setOption(stackedBar(s.apps||[], s.series||[])); }
         else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
       }
       // Top tire brands
-      if(document.getElementById('sBrands')){
-        const el = document.getElementById('sBrands');
-        const b = charts.top_brands||{};
+      if(document.getElementById('sTireBrands') && chartsData.top_brands){
+        const el = document.getElementById('sTireBrands');
+        const b = chartsData.top_brands||{};
         const any = (b.values||[]).some(v => (v||0) > 0);
         if(any){ echarts.init(el).setOption(bar(b.labels||[], b.values||[])); }
         else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
       }
       // Tire types
-      if(document.getElementById('sTireTypes')){
+      if(document.getElementById('sTireTypes') && chartsData.tire_types){
         const el = document.getElementById('sTireTypes');
-        const tt = charts.tire_types||{};
+        const tt = chartsData.tire_types||{};
         const any = (tt.values||[]).some(v => (v||0) > 0);
         if(any){ echarts.init(el).setOption(bar(tt.labels||[], tt.values||[])); }
         else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
       }
       // Inquiry types
-      if(document.getElementById('sInquiries')){
-        const el = document.getElementById('sInquiries');
-        const i = charts.inquiry_types||{};
+      if(document.getElementById('sInquiryTypes') && chartsData.inquiry_types){
+        const el = document.getElementById('sInquiryTypes');
+        const i = chartsData.inquiry_types||{};
         const any = (i.values||[]).some(v => (v||0) > 0);
         if(any){ echarts.init(el).setOption(bar(i.labels||[], i.values||[])); }
         else { el.innerHTML = '<div class="text-center text-muted">No data</div>'; }
