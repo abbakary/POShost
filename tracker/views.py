@@ -3173,14 +3173,15 @@ def analytics_customer(request: HttpRequest):
 
 @login_required
 def analytics_service(request: HttpRequest):
-    """Service analytics focused on app categories: Tire Sales, Car Service, Inquiries."""
-    # Get filter parameters
+    """Service analytics using real Order data (sales/service/consultation)."""
+    from datetime import datetime
+    # Filters
     f_from = request.GET.get("from")
     f_to = request.GET.get("to")
-    period = request.GET.get("period", "monthly")  # Default to monthly view
+    period = request.GET.get("period", "monthly")
     today = timezone.localdate()
 
-    # Resolve period shortcuts into dates
+    # Resolve period shortcuts
     if period == "daily" or (not f_from and not f_to and not period):
         f_from = f_from or today.isoformat()
         f_to = f_to or today.isoformat()
@@ -3193,186 +3194,122 @@ def analytics_service(request: HttpRequest):
         start = today.replace(month=1, day=1)
         f_from = f_from or start.isoformat()
         f_to = f_to or today.isoformat()
-    else:  # monthly default (last 30 days)
+    else:  # monthly (last 30 days)
         start = today - timezone.timedelta(days=29)
         f_from = f_from or start.isoformat()
         f_to = f_to or today.isoformat()
         period = "monthly"
 
-    # Base query for orders
-    qs = Order.objects.all().select_related('customer').prefetch_related('items')
-    
-    # Apply date filters
-    if f_from:
+    # Parse dates
+    def parse_d(s):
         try:
-            qs = qs.filter(created_at__date__gte=f_from)
+            return datetime.fromisoformat(s).date()
         except Exception:
-            pass
-    if f_to:
-        try:
-            qs = qs.filter(created_at__date__lte=f_to)
-        except Exception:
-            pass
+            return None
+    start_date = parse_d(f_from) or today
+    end_date = parse_d(f_to) or today
 
-    # Get counts by type and status
-    by_type = {row["type"]: row["c"] for row in qs.values("type").annotate(c=Count("id"))}
-    by_status = {row["status"]: row["c"] for row in qs.values("status").annotate(c=Count("id"))}
+    # Query base within created_at date range
+    qs = Order.objects.all().select_related("customer")
+    qs = qs.filter(created_at__date__gte=start_date, created_at__date__lte=end_date)
 
-    # Get status by app mapping
-    status_by_app_map = {
-        (row["type"], row["status"]): row["c"]
-        for row in qs.values("type", "status").annotate(c=Count("id"))
+    # Counts by type and status
+    by_type = {r["type"] or "": r["c"] for r in qs.values("type").annotate(c=Count("id"))}
+    by_status = {r["status"] or "": r["c"] for r in qs.values("status").annotate(c=Count("id"))}
+
+    # Status by type matrix for stacked chart
+    status_order = ["created", "assigned", "in_progress", "completed", "cancelled"]
+    type_order = ["sales", "service", "consultation"]
+    status_by_app = { (r["type"] or "", r["status"] or ""): r["c"] for r in qs.values("type", "status").annotate(c=Count("id")) }
+    status_series = [
+        {
+            "name": t.title(),
+            "data": [status_by_app.get((t, s), 0) for s in status_order],
+        }
+        for t in type_order
+    ]
+
+    # Trend data per day by type
+    trend_days = (end_date - start_date).days + 1
+    trend_labels = [(start_date + timezone.timedelta(days=i)).strftime("%b %d") for i in range(trend_days)]
+    trend_map = {
+        (row["day"], row["type"]): row["c"]
+        for row in qs.annotate(day=TruncDate("created_at")).values("day", "type").annotate(c=Count("id"))
+    }
+    trend_series = []
+    for t in type_order:
+        values = [trend_map.get((start_date + timezone.timedelta(days=i), t), 0) for i in range(trend_days)]
+        trend_series.append({"name": t.title(), "values": values})
+
+    # Sales breakdowns
+    sales_qs = qs.filter(type="sales")
+    top_brands_qs = sales_qs.values("brand").annotate(c=Count("id")).order_by("-c")[:8]
+    top_brands = {
+        "labels": [r["brand"] or "Unknown" for r in top_brands_qs],
+        "values": [r["c"] for r in top_brands_qs],
+    }
+    tire_types_qs = sales_qs.values("tire_type").annotate(c=Count("id")).order_by("-c")
+    tire_types = {
+        "labels": [r["tire_type"] or "Unknown" for r in tire_types_qs],
+        "values": [r["c"] for r in tire_types_qs],
     }
 
-    # Generate trend data
-    trend_days = 7 if period == "weekly" else 30 if period == "monthly" else 365 if period == "yearly" else 7
-    trend_start = today - timezone.timedelta(days=trend_days - 1)
-    
-    # Get all dates in the range for consistent x-axis
-    trend_dates = [trend_start + timezone.timedelta(days=i) for i in range(trend_days)]
-    
-    # Get unique service types for the trend data
-    service_types = qs.order_by().values_list('type', flat=True).distinct()
-    
-    # Get trend data for the selected period
-    trend_qs = (
-        qs.annotate(day=TruncDate('created_at'))
-        .values('day', 'type')
-        .annotate(count=Count('id'))
-        .order_by('day')
-    )
-    
-    # Initialize trend data structure
-    trend_data = {st: [0] * trend_days for st in service_types}
-    
-    # Fill in the trend data
-    for entry in trend_qs:
-        day = (entry['day'] - trend_start).days
-        if 0 <= day < trend_days:
-            trend_data[entry['type']][day] = entry['count']
-    
-    # Convert to list of series for the chart
-    trend_series = [
-        {"name": st, "data": trend_data[st], "type": "line", "smooth": True, "areaStyle": {}}
-        for st in service_types if st in trend_data
-    ]
-    
-    # Get service distribution data
-    service_distribution = [
-        {"value": by_type.get("tire_sales", 0), "name": "Tire Sales"},
-        {"value": by_type.get("car_service", 0), "name": "Car Service"},
-        {"value": by_type.get("inquiry", 0), "name": "Inquiries"}
-    ]
-    
-    # Get status overview data
-    status_overview = {
-        "categories": ["Pending", "In Progress", "Completed", "Cancelled"],
-        "data": [
-            by_status.get("pending", 0),
-            by_status.get("in_progress", 0),
-            by_status.get("completed", 0),
-            by_status.get("cancelled", 0)
-        ]
+    # Inquiry breakdowns
+    inquiry_qs = qs.filter(type="consultation")
+    inquiry_types_qs = inquiry_qs.values("inquiry_type").annotate(c=Count("id")).order_by("-c")
+    inquiry_types = {
+        "labels": [r["inquiry_type"] or "Other" for r in inquiry_types_qs],
+        "values": [r["c"] for r in inquiry_types_qs],
     }
-    
-    # Get service performance metrics (sample data - replace with actual metrics)
-    service_performance = {
-        "indicators": [
-            {"name": "Response Time", "max": 100, "value": 78},
-            {"name": "Service Quality", "max": 100, "value": 92},
-            {"name": "Satisfaction", "max": 100, "value": 85},
-            {"name": "Completion Rate", "max": 100, "value": 94}
-        ]
+
+    # Types pie
+    types_chart = {
+        "labels": ["Sales", "Service", "Consultation"],
+        "values": [by_type.get("sales", 0), by_type.get("service", 0), by_type.get("consultation", 0)],
     }
-    
-    # Get tire brands data (sample data - replace with actual query)
-    tire_brands = [
-        {"value": 35, "name": "Michelin"},
-        {"value": 28, "name": "Bridgestone"},
-        {"value": 20, "name": "Goodyear"},
-        {"value": 12, "name": "Pirelli"},
-        {"value": 5, "name": "Others"}
-    ]
-    
-    # Get tire types data (sample data - replace with actual query)
-    tire_types = [
-        {"value": 40, "name": "All-Season"},
-        {"value": 30, "name": "Summer"},
-        {"value": 20, "name": "Winter"},
-        {"value": 10, "name": "Performance"}
-    ]
-    
-    # Get service types data (sample data - replace with actual query)
-    service_types_data = [
-        {"value": 35, "name": "Oil Change"},
-        {"value": 25, "name": "Brake Service"},
-        {"value": 20, "name": "Engine Check"},
-        {"value": 15, "name": "Tire Rotation"},
-        {"value": 5, "name": "Other"}
-    ]
-    
-    # Get inquiry types data (sample data - replace with actual query)
-    inquiry_types = [
-        {"value": 45, "name": "Pricing"},
-        {"value": 30, "name": "Availability"},
-        {"value": 15, "name": "Installation"},
-        {"value": 10, "name": "Other"}
-    ]
-    
-    # Calculate KPI metrics
-    total_orders = sum(by_type.values()) if by_type else 0
-    total_tire_sales = by_type.get("tire_sales", 0)
-    total_car_service = by_type.get("car_service", 0)
-    total_inquiries = by_type.get("inquiry", 0)
-    
-    # Calculate percentage changes (sample data - replace with actual calculation)
-    # This would typically compare with previous period data
-    order_change = 12.5  # Example: 12.5% increase from previous period
-    tire_sales_change = 8.2
-    car_service_change = 15.7
-    inquiry_change = -3.2
-    
-    # Calculate sums for the template
-    by_type_values_sum = sum(by_type.values()) if by_type else 0
-    
-    # Prepare context
+
+    # KPIs + period-over-period deltas
+    total_orders = sum(types_chart["values"]) if types_chart else 0
+    total_sales = by_type.get("sales", 0)
+    total_service = by_type.get("service", 0)
+    total_inquiries = by_type.get("consultation", 0)
+
+    # Previous period (same length right before start_date)
+    prev_end = start_date - timezone.timedelta(days=1)
+    prev_start = prev_end - timezone.timedelta(days=trend_days - 1)
+    prev_qs = Order.objects.filter(created_at__date__gte=prev_start, created_at__date__lte=prev_end)
+    def pct_change(curr, prev):
+        return round(((curr - prev) * 100.0) / (prev if prev else 1), 1)
+    prev_by_type = {r["type"] or "": r["c"] for r in prev_qs.values("type").annotate(c=Count("id"))}
+    kpis = {
+        "total_orders": total_orders,
+        "total_tire_sales": total_sales,
+        "total_car_service": total_service,
+        "total_inquiries": total_inquiries,
+        "order_change": pct_change(total_orders, sum(prev_by_type.values()) if prev_by_type else 0),
+        "tire_sales_change": pct_change(total_sales, prev_by_type.get("sales", 0)),
+        "car_service_change": pct_change(total_service, prev_by_type.get("service", 0)),
+        "inquiry_change": pct_change(total_inquiries, prev_by_type.get("consultation", 0)),
+    }
+
+    charts = {
+        "trend_multi": {"labels": trend_labels, "series": trend_series},
+        "types": types_chart,
+        "status_by_app": {"apps": [s.replace("_", " ").title() for s in status_order], "series": status_series},
+        "top_brands": top_brands,
+        "tire_types": tire_types,
+        "inquiry_types": inquiry_types,
+    }
+
     context = {
-        'page_title': 'Service Analytics',
-        'period': period,
-        'f_from': f_from,
-        'f_to': f_to,
-        'today': today.isoformat(),
-        'trend_labels': [d.strftime('%b %d') for d in trend_dates],
-        'trend_series': trend_series,
-        'service_distribution': service_distribution,
-        'status_overview': status_overview,
-        'service_performance': service_performance,
-        'tire_brands': tire_brands,
-        'tire_types': tire_types,
-        'service_types': service_types_data,
-        'inquiry_types': inquiry_types,
-        'by_type': by_type,
-        'by_type_values_sum': by_type_values_sum,
-        'kpis': {
-            'total_orders': total_orders,
-            'total_tire_sales': total_tire_sales,
-            'total_car_service': total_car_service,
-            'total_inquiries': total_inquiries,
-            'order_change': order_change,
-            'tire_sales_change': tire_sales_change,
-            'car_service_change': car_service_change,
-            'inquiry_change': inquiry_change,
-        },
-        'charts_json': json.dumps({
-            'trend': trend_series,
-            'service_distribution': service_distribution,
-            'status_overview': status_overview,
-            'service_performance': service_performance,
-            'tire_brands': tire_brands,
-            'tire_types': tire_types,
-            'service_types': service_types_data,
-            'inquiry_types': inquiry_types,
-        })
+        "page_title": "Service Analytics",
+        "period": period,
+        "f_from": start_date.isoformat(),
+        "f_to": end_date.isoformat(),
+        "today": today.isoformat(),
+        "by_type": by_type,
+        "by_type_values_sum": total_orders,
+        "kpis": kpis,
+        "charts_json": json.dumps(charts),
     }
-    
-    return render(request, 'tracker/analytics_service.html', context)
+    return render(request, "tracker/analytics_service.html", context)
