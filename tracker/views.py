@@ -70,107 +70,90 @@ class CustomLogoutView(LogoutView):
 
 @login_required
 def dashboard(request: HttpRequest):
-    cache_key = "dashboard_metrics_v2"  # Updated cache key
-    cached = cache.get(cache_key)
-    
-    if cached:
-        return render(request, 'tracker/dashboard.html', cached)
-    
-    # Basic counts
-    total_orders = Order.objects.count()
-    total_customers = Customer.objects.count()
-    
-    # Status and type distributions
-    status_counts_qs = Order.objects.values("status").annotate(c=Count("id"))
-    type_counts_qs = Order.objects.values("type").annotate(c=Count("id"))
-    priority_counts_qs = Order.objects.values("priority").annotate(c=Count("id"))
-    
-    # Convert to dictionaries for easier template access
-    status_counts = {x["status"]: x["c"] for x in status_counts_qs}
-    type_counts = {x["type"]: x["c"] for x in type_counts_qs}
-    priority_counts = {x["priority"]: x["c"] for x in priority_counts_qs}
-    
-    # Date calculations
+    # Cache only heavy metrics; refresh dynamic sections every request
+    cache_key = "dashboard_metrics_v3"
+    metrics = cache.get(cache_key)
+
     today = timezone.localdate()
-    last_month = today - timedelta(days=30)
-    
-    # Calculate completed orders and completion rate
-    completed_orders = status_counts.get('completed', 0)
-    completion_rate = (completed_orders / total_orders * 100) if total_orders > 0 else 0
-    
-    # Get count of orders completed today
-    completed_today = Order.objects.filter(
-        status='completed',
-        completed_at__date=timezone.localdate()
-    ).count()
-    
-    # New customers this month
-    new_customers_this_month = Customer.objects.filter(
-        registration_date__year=today.year,
-        registration_date__month=today.month
-    ).count()
-    
-    # Calculate average order value (placeholder)
-    average_order_value = 0
-    
-    # Get pending inquiries count
-    pending_inquiries_count = Order.objects.filter(
-        type='inquiry',
-        status='pending'
-    ).count()
-    
-    # Get upcoming appointments (next 7 days) - using created_at as the reference date
-    upcoming_appointments = Order.objects.filter(
-        status__in=['pending', 'in_progress'],
-        created_at__date__gte=today,
-        created_at__date__lte=today + timedelta(days=7)
-    ).select_related('customer').order_by('created_at')[:5]
-    
-    # Get recent non-completed orders for the dashboard
-    recent_orders = Order.objects.select_related('customer').exclude(status='completed').order_by('-created_at')[:10]
-    
-    # Get top customers by order count
-    from django.db.models import Max
-    top_customers = Customer.objects.annotate(
-        order_count=Count('orders'),
-        latest_order_date=Max('orders__created_at')
-    ).filter(order_count__gt=0).order_by('-order_count')[:5]
-    
-    # Calculate status percentages
-    status_percentages = {}
-    for status, count in status_counts.items():
-        status_percentages[f'{status}_percent'] = (count / total_orders * 100) if total_orders > 0 else 0
-    
-    # Prepare context
-    context = {
-        'total_orders': total_orders,
-        'total_customers': total_customers,
-        'status_counts': status_counts,
-        'status_percentages': status_percentages,
-        'type_counts': type_counts,
-        'priority_counts': priority_counts,
-        'completed_orders': completed_orders,
-        'completed_today': completed_today,
-        'completion_rate': completion_rate,
-        'new_customers_this_month': new_customers_this_month,
-        'average_order_value': average_order_value,
-        'pending_inquiries_count': pending_inquiries_count,
-        'upcoming_appointments': upcoming_appointments,
-        'recent_orders': recent_orders,
-        'top_customers': top_customers,
-        'today': today,
-    }
-    
-    # Cache for 15 minutes
-    cache.set(cache_key, context, 60 * 15)
-    
-    # Add current time to context for the 'as of' timestamp
-    context['current_time'] = timezone.now()
-    
-    # Cache for 15 minutes
-    cache.set(cache_key, context, 60 * 15)
-    
-    return render(request, 'tracker/dashboard.html', context)
+
+    if not metrics:
+        total_orders = Order.objects.count()
+        total_customers = Customer.objects.count()
+
+        status_counts_qs = Order.objects.values("status").annotate(c=Count("id"))
+        type_counts_qs = Order.objects.values("type").annotate(c=Count("id"))
+        priority_counts_qs = Order.objects.values("priority").annotate(c=Count("id"))
+
+        status_counts = {x["status"]: x["c"] for x in status_counts_qs}
+        type_counts = {x["type"]: x["c"] for x in type_counts_qs}
+        priority_counts = {x["priority"]: x["c"] for x in priority_counts_qs}
+
+        completed_orders = status_counts.get("completed", 0)
+        completion_rate = (completed_orders / total_orders * 100) if total_orders > 0 else 0
+
+        # New customers this month
+        new_customers_this_month = Customer.objects.filter(
+            registration_date__year=today.year,
+            registration_date__month=today.month,
+        ).count()
+
+        # Keep original fields/logic for compatibility
+        average_order_value = 0
+        pending_inquiries_count = Order.objects.filter(type="inquiry", status="pending").count()
+
+        # Upcoming appointments (next 7 days)
+        upcoming_appointments = (
+            Order.objects.filter(
+                status__in=["pending", "in_progress"],
+                created_at__date__gte=today,
+                created_at__date__lte=today + timedelta(days=7),
+            )
+            .select_related("customer")
+            .order_by("created_at")[:5]
+        )
+
+        # Top customers by order count
+        from django.db.models import Max
+
+        top_customers = (
+            Customer.objects.annotate(
+                order_count=Count("orders"), latest_order_date=Max("orders__created_at")
+            )
+            .filter(order_count__gt=0)
+            .order_by("-order_count")[:5]
+        )
+
+        status_percentages = {}
+        for s, c in status_counts.items():
+            status_percentages[f"{s}_percent"] = (c / total_orders * 100) if total_orders > 0 else 0
+
+        metrics = {
+            "total_orders": total_orders,
+            "total_customers": total_customers,
+            "status_counts": status_counts,
+            "status_percentages": status_percentages,
+            "type_counts": type_counts,
+            "priority_counts": priority_counts,
+            "completed_orders": completed_orders,
+            "completion_rate": completion_rate,
+            "new_customers_this_month": new_customers_this_month,
+            "average_order_value": average_order_value,
+            "pending_inquiries_count": pending_inquiries_count,
+            "upcoming_appointments": upcoming_appointments,
+            "top_customers": top_customers,
+            "today": today,
+        }
+        # Short TTL to keep dashboard fresh
+        cache.set(cache_key, metrics, 60)
+
+    # Always fresh data for fast-updating sections
+    recent_orders = (
+        Order.objects.select_related("customer").exclude(status="completed").order_by("-created_at")[:10]
+    )
+    completed_today = Order.objects.filter(status="completed", completed_at__date=today).count()
+
+    context = {**metrics, "recent_orders": recent_orders, "completed_today": completed_today, "current_time": timezone.now()}
+    return render(request, "tracker/dashboard.html", context)
 
     # Build sales_chart_json (monthly Orders vs Completed for last 12 months)
     from django.db.models.functions import TruncMonth
@@ -1544,9 +1527,24 @@ def reports(request: HttpRequest):
 
     total = qs.count()
     by_status = dict(qs.values_list("status").annotate(c=Count("id")))
+    # Completed should be based on completion time within the selected period
+    completed_qs = Order.objects.all()
+    if f_from:
+        try:
+            completed_qs = completed_qs.filter(completed_at__date__gte=f_from)
+        except Exception:
+            pass
+    if f_to:
+        try:
+            completed_qs = completed_qs.filter(completed_at__date__lte=f_to)
+        except Exception:
+            pass
+    if f_type and f_type != "all":
+        completed_qs = completed_qs.filter(type=f_type)
+
     stats = {
         "total": total,
-        "completed": by_status.get("completed", 0),
+        "completed": completed_qs.filter(status="completed").count(),
         "in_progress": by_status.get("in_progress", 0) + by_status.get("assigned", 0) + by_status.get("created", 0),
         "cancelled": by_status.get("cancelled", 0),
     }
@@ -2889,7 +2887,12 @@ def reports_advanced(request: HttpRequest):
 
     # Base statistics
     total_orders = qs.count()
-    completed_orders = qs.filter(status='completed').count()
+    # Completed counted by completion time within the selected period
+    completed_orders = Order.objects.filter(
+        completed_at__gte=start_dt,
+        completed_at__lt=end_dt,
+        status='completed',
+    ).count()
     pending_orders = qs.filter(status__in=['created', 'assigned', 'in_progress']).count()
     total_customers = cqs.count()
 
@@ -2949,7 +2952,7 @@ def reports_advanced(request: HttpRequest):
                 qs.filter(status='created').count(),
                 qs.filter(status='assigned').count(),
                 qs.filter(status='in_progress').count(),
-                qs.filter(status='completed').count(),
+                Order.objects.filter(completed_at__gte=start_dt, completed_at__lt=end_dt, status='completed').count(),
                 qs.filter(status='cancelled').count(),
             ]
         },
