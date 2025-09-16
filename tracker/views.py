@@ -97,14 +97,17 @@ def dashboard(request: HttpRequest):
             registration_date__month=today.month,
         ).count()
 
-        # Keep original fields/logic for compatibility
+        # Keep original fields/logic for compatibility, but use valid types/statuses
         average_order_value = 0
-        pending_inquiries_count = Order.objects.filter(type="inquiry", status="pending").count()
+        pending_inquiries_count = Order.objects.filter(
+            type="consultation",
+            status__in=["created", "assigned", "in_progress"],
+        ).count()
 
-        # Upcoming appointments (next 7 days)
+        # Upcoming appointments (next 7 days) based on active orders
         upcoming_appointments = (
             Order.objects.filter(
-                status__in=["pending", "in_progress"],
+                status__in=["created", "assigned", "in_progress"],
                 created_at__date__gte=today,
                 created_at__date__lte=today + timedelta(days=7),
             )
@@ -153,32 +156,20 @@ def dashboard(request: HttpRequest):
     completed_today = Order.objects.filter(status="completed", completed_at__date=today).count()
 
     context = {**metrics, "recent_orders": recent_orders, "completed_today": completed_today, "current_time": timezone.now()}
-    return render(request, "tracker/dashboard.html", context)
+    # render after charts
 
     # Build sales_chart_json (monthly Orders vs Completed for last 12 months)
     from django.db.models.functions import TruncMonth
-    last_months = [
-        (today.replace(day=1) - timezone.timedelta(days=1)).replace(day=1)
-    ]
-    # build 11 more months back
+
+    # Last 12 months for type 'sales'
+    last_months = [(today.replace(day=1) - timezone.timedelta(days=1)).replace(day=1)]
     for _ in range(11):
         prev = (last_months[-1] - timezone.timedelta(days=1)).replace(day=1)
         last_months.append(prev)
     last_months = list(reversed(last_months))
 
-    # Sales history: restrict to tire sales only (type='sales')
-    monthly_total_qs = (
-        Order.objects.filter(type="sales")
-        .annotate(m=TruncMonth("created_at"))
-        .values("m")
-        .annotate(c=Count("id"))
-    )
-    monthly_completed_qs = (
-        Order.objects.filter(type="sales", status="completed")
-        .annotate(m=TruncMonth("completed_at"))
-        .values("m")
-        .annotate(c=Count("id"))
-    )
+    monthly_total_qs = Order.objects.filter(type="sales").annotate(m=TruncMonth("created_at")).values("m").annotate(c=Count("id"))
+    monthly_completed_qs = Order.objects.filter(type="sales", status="completed").annotate(m=TruncMonth("completed_at")).values("m").annotate(c=Count("id"))
     monthly_total_map = {row["m"].date(): row["c"] for row in monthly_total_qs if row["m"]}
     monthly_completed_map = {row["m"].date(): row["c"] for row in monthly_completed_qs if row["m"]}
 
@@ -191,26 +182,12 @@ def dashboard(request: HttpRequest):
         "completed": [monthly_completed_map.get(m, 0) for m in last_months],
     }
 
-    # Build periodized sales datasets for Sales Chart dropdown
-    # 1) Last Year (monthly): use sales_chart above
-    sales_last_year = sales_chart
-
-    # 2) This Month (daily within current calendar month to date)
+    # Periodized datasets
     curr_month_start = today.replace(day=1)
     curr_days = [curr_month_start + timezone.timedelta(days=i) for i in range((today - curr_month_start).days + 1)]
 
-    daily_total_prev_qs = (
-        Order.objects.filter(type="sales", created_at__date__gte=curr_month_start, created_at__date__lte=today)
-        .annotate(d=TruncDate("created_at"))
-        .values("d")
-        .annotate(c=Count("id"))
-    )
-    daily_completed_prev_qs = (
-        Order.objects.filter(type="sales", status="completed", completed_at__date__gte=curr_month_start, completed_at__date__lte=today)
-        .annotate(d=TruncDate("completed_at"))
-        .values("d")
-        .annotate(c=Count("id"))
-    )
+    daily_total_prev_qs = Order.objects.filter(type="sales", created_at__date__gte=curr_month_start, created_at__date__lte=today).annotate(d=TruncDate("created_at")).values("d").annotate(c=Count("id"))
+    daily_completed_prev_qs = Order.objects.filter(type="sales", status="completed", completed_at__date__gte=curr_month_start, completed_at__date__lte=today).annotate(d=TruncDate("completed_at")).values("d").annotate(c=Count("id"))
     daily_total_prev_map = {row["d"]: row["c"] for row in daily_total_prev_qs if row["d"]}
     daily_completed_prev_map = {row["d"]: row["c"] for row in daily_completed_prev_qs if row["d"]}
     sales_last_month = {
@@ -219,149 +196,55 @@ def dashboard(request: HttpRequest):
         "completed": [daily_completed_prev_map.get(d, 0) for d in curr_days],
     }
 
-    # 3) Last Week (last 7 days including today)
-    last_days = [today - timezone.timedelta(days=i) for i in range(6, -1, -1)]
-    daily_total_qs = (
-        Order.objects.filter(type="sales")
-        .annotate(d=TruncDate("created_at"))
-        .values("d")
-        .annotate(c=Count("id"))
-    )
-    daily_completed_qs = (
-        Order.objects.filter(type="sales", status="completed")
-        .annotate(d=TruncDate("completed_at"))
-        .values("d")
-        .annotate(c=Count("id"))
-    )
+    last_7_days = [today - timezone.timedelta(days=i) for i in range(6, -1, -1)]
+    daily_total_qs = Order.objects.filter(type="sales").annotate(d=TruncDate("created_at")).values("d").annotate(c=Count("id"))
+    daily_completed_qs = Order.objects.filter(type="sales", status="completed").annotate(d=TruncDate("completed_at")).values("d").annotate(c=Count("id"))
     daily_total_map = {row["d"]: row["c"] for row in daily_total_qs if row["d"]}
     daily_completed_map = {row["d"]: row["c"] for row in daily_completed_qs if row["d"]}
     sales_last_week = {
-        "labels": [d.strftime("%Y-%m-%d") for d in last_days],
-        "total": [daily_total_map.get(d, 0) for d in last_days],
-        "completed": [daily_completed_map.get(d, 0) for d in last_days],
+        "labels": [d.strftime("%Y-%m-%d") for d in last_7_days],
+        "total": [daily_total_map.get(d, 0) for d in last_7_days],
+        "completed": [daily_completed_map.get(d, 0) for d in last_7_days],
     }
 
-    # 4) Today (hourly 0-23)
     from django.db.models.functions import TruncHour
-    hourly_total_qs = (
-        Order.objects.filter(type="sales", created_at__date=today)
-        .annotate(h=TruncHour("created_at"))
-        .values("h")
-        .annotate(c=Count("id"))
-    )
-    hourly_completed_qs = (
-        Order.objects.filter(type="sales", status="completed", completed_at__date=today)
-        .annotate(h=TruncHour("completed_at"))
-        .values("h")
-        .annotate(c=Count("id"))
-    )
+    hourly_total_qs = Order.objects.filter(type="sales", created_at__date=today).annotate(h=TruncHour("created_at")).values("h").annotate(c=Count("id"))
+    hourly_completed_qs = Order.objects.filter(type="sales", status="completed", completed_at__date=today).annotate(h=TruncHour("completed_at")).values("h").annotate(c=Count("id"))
     hourly_total_map = {row["h"].hour: row["c"] for row in hourly_total_qs if row["h"]}
     hourly_completed_map = {row["h"].hour: row["c"] for row in hourly_completed_qs if row["h"]}
-    hours = list(range(0,24))
-    sales_today = {
-        "labels": [f"{h:02d}:00" for h in hours],
-        "total": [hourly_total_map.get(h, 0) for h in hours],
-        "completed": [hourly_completed_map.get(h, 0) for h in hours],
-    }
+    hours = list(range(0, 24))
+    sales_today = {"labels": [f"{h:02d}:00" for h in hours], "total": [hourly_total_map.get(h, 0) for h in hours], "completed": [hourly_completed_map.get(h, 0) for h in hours]}
 
-    sales_periods = {
-        "last_year": sales_last_year,
-        "last_month": sales_last_month,
-        "last_week": sales_last_week,
-        "today": sales_today,
-    }
+    sales_periods = {"last_year": sales_chart, "last_month": sales_last_month, "last_week": sales_last_week, "today": sales_today}
 
-    # Build total_order_spark_json (last 8 days Orders vs Completed)
-    last_days = [today - timezone.timedelta(days=i) for i in range(7, -1, -1)]
-    daily_total_qs = (
-        Order.objects.filter(type="sales")
-        .annotate(d=TruncDate("created_at"))
-        .values("d")
-        .annotate(c=Count("id"))
-    )
-    daily_completed_qs = (
-        Order.objects.filter(type="sales", status="completed")
-        .annotate(d=TruncDate("completed_at"))
-        .values("d")
-        .annotate(c=Count("id"))
-    )
-    daily_total_map = {row["d"]: row["c"] for row in daily_total_qs if row["d"]}
-    daily_completed_map = {row["d"]: row["c"] for row in daily_completed_qs if row["d"]}
+    # Sparkline last 8 days
+    last_8_days = [today - timezone.timedelta(days=i) for i in range(7, -1, -1)]
     total_order_spark = {
-        "labels": [d.strftime("%Y-%m-%d") for d in last_days],
-        "total": [daily_total_map.get(d, 0) for d in last_days],
-        "completed": [daily_completed_map.get(d, 0) for d in last_days],
+        "labels": [d.strftime("%Y-%m-%d") for d in last_8_days],
+        "total": [daily_total_map.get(d, 0) for d in last_8_days],
+        "completed": [daily_completed_map.get(d, 0) for d in last_8_days],
     }
 
-    # Build top_orders_json (top customers by orders per period)
-    def _period_range(name):
-        if name == "today":
-            start = today
-            end = today
-        elif name == "yesterday":
-            start = today - timezone.timedelta(days=1)
-            end = start
-        elif name == "last_week":
-            start = today - timezone.timedelta(days=6)
-            end = today
-        else:  # last_month
-            start = (today.replace(day=1) - timezone.timedelta(days=1)).replace(day=1)
-            # end is last day of previous month
-            end = today.replace(day=1) - timezone.timedelta(days=1)
-        return start, end
-
-    top_orders_json_data = {}
-    for p in ["today", "yesterday", "last_week", "last_month"]:
-        start, end = _period_range(p)
-        qs = (
-            Order.objects.filter(created_at__date__gte=start, created_at__date__lte=end)
-            .values("customer__full_name")
-            .annotate(c=Count("id"))
-            .order_by("-c")[:5]
-        )
-        labels = [row["customer__full_name"] or "Unknown" for row in qs]
-        values = [row["c"] for row in qs]
-        top_orders_json_data[p] = {"labels": labels, "values": values}
-
-    # Get user's profile image
-    try:
-        profile = request.user.profile
-        profile_image = profile.photo.url if profile.photo else None
-    except Profile.DoesNotExist:
-        profile_image = None
-
-    return render(
-        request,
-        "tracker/dashboard.html",
-        {
-            "total_orders": total_orders,
-            "total_customers": total_customers,
-            "pending_count": pending_count,
-            "in_progress_count": in_progress_count,
-            "completed_today_count": completed_today_count,
-            "active_count": active_count,
-            "status_counts": status_counts,
-            "type_counts": type_counts,
-            "recent_orders": recent_orders,
-            "todays_customers": todays_customers,
-            "completed_percent": completed_percent,
-            "charts_json": json.dumps(charts),
-            "inventory_preview": inventory_preview,
-            "can_manage_inventory": can_manage_inventory,
-            "total_stock": total_stock,
-            "order_stats_data": order_stats_data,
-            "order_dates": json.dumps([str(date) for date in order_dates]),
-            "overdue_inventory": overdue_inventory,
-            "overdue_threshold": OVERDUE_THRESHOLD,
-            "top_clients": top_clients,
-            "profile_image": profile_image,
-            # New JSON payloads for standalone dashboard template
-            "sales_chart_json": json.dumps(sales_chart),
-            "sales_chart_periods_json": json.dumps(sales_periods),
-            "total_order_spark_json": json.dumps(total_order_spark),
-            "top_orders_json": json.dumps(top_orders_json_data),
-        },
-    )
+    context = {
+        **metrics,
+        "recent_orders": recent_orders,
+        "completed_today": completed_today,
+        "current_time": timezone.now(),
+        "sales_chart_json": json.dumps(sales_chart),
+        "sales_chart_periods_json": json.dumps(sales_periods),
+        "total_order_spark_json": json.dumps(total_order_spark),
+        "top_orders_json": json.dumps({
+            p: {
+                "labels": [row["customer__full_name"] or "Unknown" for row in Order.objects.filter(
+                    created_at__date__gte=_period_range := ((today, today) if p=="today" else ((today - timezone.timedelta(days=1), today - timezone.timedelta(days=1)) if p=="yesterday" else ((today - timezone.timedelta(days=6), today) if p=="last_week" else (((today.replace(day=1) - timezone.timedelta(days=1)).replace(day=1), today.replace(day=1) - timezone.timedelta(days=1)))))
+                ).values("customer__full_name").annotate(c=Count("id")).order_by("-c")[:5]],
+                "values": [row["c"] for row in Order.objects.filter(
+                    created_at__date__gte=_period_range[0], created_at__date__lte=_period_range[1]
+                ).values("customer__full_name").annotate(c=Count("id")).order_by("-c")[:5]],
+            } for p in ["today","yesterday","last_week","last_month"]
+        }),
+    }
+    return render(request, "tracker/dashboard.html", context)
 
 
 @login_required
