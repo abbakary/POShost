@@ -367,7 +367,7 @@
                       </div>
 
                       <div class="d-flex justify-content-between mt-4">
-                        <a href="{% url 'tracker:customer_register' %}?step=1" class="btn btn-outline-secondary btn-lg">
+                        <a href="{% url 'tracker:customer_register' %}?step=1" class="btn btn-outline-secondary btn-lg" data-step-link="true">
                           <i class="fa fa-arrow-left me-2"></i>Previous
                         </a>
                         <button type="submit" class="btn btn-primary btn-lg" id="nextStepBtn" disabled>
@@ -434,7 +434,7 @@
                       </div>
 
                       <div class="d-flex justify-content-between mt-4">
-                        <a href="{% url 'tracker:customer_register' %}?step=2" class="btn btn-outline-secondary btn-lg">
+                        <a href="{% url 'tracker:customer_register' %}?step=2" class="btn btn-outline-secondary btn-lg" data-step-link="true">
                           <i class="fa fa-arrow-left me-2"></i>Previous
                         </a>
                         <button type="submit" class="btn btn-primary btn-lg" id="nextServiceBtn" disabled>
@@ -778,11 +778,11 @@
 
                       <div class="d-flex justify-content-between mt-4">
                         {% if step2.intent == 'inquiry' %}
-                          <a href="{% url 'tracker:customer_register' %}?step=2" class="btn btn-outline-secondary btn-lg">
+                          <a href="{% url 'tracker:customer_register' %}?step=2" class="btn btn-outline-secondary btn-lg" data-step-link="true">
                             <i class="fa fa-arrow-left me-2"></i>Previous
                           </a>
                         {% else %}
-                          <a href="{% url 'tracker:customer_register' %}?step=3" class="btn btn-outline-secondary btn-lg">
+                          <a href="{% url 'tracker:customer_register' %}?step=3" class="btn btn-outline-secondary btn-lg" data-step-link="true">
                             <i class="fa fa-arrow-left me-2"></i>Previous
                           </a>
                         {% endif %}
