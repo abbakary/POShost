@@ -311,7 +311,7 @@
             <button type="submit" class="btn btn-primary">
               <i class="fas fa-filter me-2"></i>Apply Filters
             </button>
-            <a href="{% url 'tracker:analytics_service' %}" class="btn btn-outline-secondary">
+            <a href="{% url 'tracker:analytics_service' %}" class="btn btn-outline-secondary" data-ajax-link="true">
               <i class="fas fa-sync-alt"></i>
             </a>
             <a href="{% url 'tracker:reports_export' %}?from={{ f_from|default:'' }}&to={{ f_to|default:'' }}" class="btn btn-outline-primary">
@@ -535,8 +535,9 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="{% static 'js/analytics_service.js' %}"></script>
 <script>
-  const charts = {{ charts_json|safe }};
+  // Inline bootstrap only for minimal fallback; main logic in analytics_service.js
   // Initialize chart themes and options
   const chartThemes = {
     colors: ['#4361ee', '#3f37c9', '#4895ef', '#4cc9f0', '#4895ef', '#4361ee', '#3f37c9'],
